@@ -1,0 +1,79 @@
+datasource db {
+  provider  = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  nome      String?
+  senha     String   // Para o fluxo de JWT Auth
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // Relacionamentos
+  contas       Conta[]
+  categorias   Categoria[]
+  transacoes   Transacao[]
+
+  @@map("usuarios")
+}
+
+model Conta {
+  id           String   @id @default(uuid())
+  nome         String   // Ex: "Conta Corrente Itaú", "Carteira", "Nubank"
+  tipo         String   // Ex: "CORRENTE", "POUPANCA", "DINHEIRO"
+  saldoAtual   Int      // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
+  usuarioId    String
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  transacoes   Transacao[]
+
+  @@map("contas")
+}
+
+enum TipoTransacao {
+  RECEITA // Entradas
+  DESPESA // Saídas / Gastos
+}
+
+model Categoria {
+  id        String        @id @default(uuid())
+  nome      String        // Ex: "Alimentação", "Salário", "Transporte"
+  icone     String?       // Nome do ícone para o Expo (Ex: "fast-food")
+  cor       String?       // Cor em Hexadecimal para os gráficos do front (#FF5733)
+  tipo      TipoTransacao // Define se é uma categoria de receita ou despesa
+  usuarioId String
+  usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  transacoes Transacao[]
+
+  @@map("categorias")
+}
+
+model Transacao {
+  id           String        @id @default(uuid())
+  descricao    String        // Ex: "Supermercado Zona Sul"
+  valor        Int           // Valor EM CENTAVOS (Sempre positivo)
+  tipo         TipoTransacao
+  data         DateTime      // Data da transação (Guardar sempre em UTC)
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+
+  // Chaves estrangeiras obrigatórias
+  usuarioId    String
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  contaId      String
+  conta        Conta         @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  
+  categoriaId  String
+  categoria    Categoria     @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  @@map("transacoes")
+}
