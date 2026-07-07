@@ -1,0 +1,4 @@
+# Ignorar documentações internas sensíveis
+docs/adr/
+docs/esquemas/
+docs/fluxos/
