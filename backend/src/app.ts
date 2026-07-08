@@ -4,6 +4,8 @@ import jwt from '@fastify/jwt'
 import { ZodError } from 'zod'
 import { appRoutes } from './http/routes'
 import fastifyCookie from '@fastify/cookie'
+import fastifyHelmet from '@fastify/helmet'
+import fastifyRateLimit from '@fastify/rate-limit'
 import { env } from './env'
 
 export const app = fastify()
@@ -12,6 +14,13 @@ export const app = fastify()
 app.register(cors, {
   origin: true, // Em produção na Render, você pode restringir para o seu domínio
   credentials: true, // IMPORTANTÍSSIMO para o tráfego de cookies entre frontend web e backend
+})
+
+// Configurações de Segurança e Resiliência (ADR 0006)
+app.register(fastifyHelmet) // Adiciona headers de segurança HTTP (contra XSS, Sniffing, etc)
+app.register(fastifyRateLimit, {
+  max: 100, // Máximo de 100 requisições...
+  timeWindow: '1 minute', // ...por minuto, por IP. (Impede brute force/DDoS básico)
 })
 
 // Registro do plugin de Cookies ANTES do JWT

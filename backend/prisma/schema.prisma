@@ -10,7 +10,8 @@ model Usuario {
   id        String   @id @default(uuid())
   email     String   @unique
   nome      String?
-  senha     String   // Para o fluxo de JWT Auth
+  senha     String?  // Opcional para suportar Google Auth no futuro
+  googleId  String?  @unique
   criadoEm  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
