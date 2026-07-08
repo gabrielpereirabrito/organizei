@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { hash, compare } from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
+import { DEFAULT_CATEGORIES } from '@/lib/default-categories'
 
 // Schema de validação para o Cadastro
 const cadastroBodySchema = z.object({
@@ -38,6 +39,16 @@ export async function cadastro(request: FastifyRequest, reply: FastifyReply) {
       email,
       senha: senhaHash,
     },
+  })
+
+  // Cria as categorias padrão para o novo usuário
+  const categoriasDoUsuario = DEFAULT_CATEGORIES.map((cat) => ({
+    ...cat,
+    usuarioId: usuario.id,
+  }))
+
+  await prisma.categoria.createMany({
+    data: categoriasDoUsuario,
   })
 
   // Gera o token JWT
