@@ -1,5 +1,5 @@
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 generator client {
@@ -7,33 +7,35 @@ generator client {
 }
 
 model Usuario {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  nome      String?
-  senha     String?  // Opcional para suportar Google Auth no futuro
-  googleId  String?  @unique
-  criadoEm  DateTime @default(now())
+  id           String   @id @default(uuid())
+  email        String   @unique
+  nome         String?
+  senha        String? // Opcional para suportar Google Auth no futuro
+  googleId     String?  @unique
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   // Relacionamentos
   contas       Conta[]
   categorias   Categoria[]
   transacoes   Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("usuarios")
 }
 
 model Conta {
   id           String   @id @default(uuid())
-  nome         String   // Ex: "Conta Corrente Itaú", "Carteira", "Nubank"
-  tipo         String   // Ex: "CORRENTE", "POUPANCA", "DINHEIRO"
-  saldoAtual   Int      // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
+  nome         String // Ex: "Conta Corrente Itaú", "Carteira", "Nubank"
+  tipo         String // Ex: "CORRENTE", "POUPANCA", "DINHEIRO"
+  saldoAtual   Int // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
   usuarioId    String
   usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   transacoes   Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("contas")
 }
@@ -43,38 +45,91 @@ enum TipoTransacao {
   DESPESA // Saídas / Gastos
 }
 
+enum StatusTransacao {
+  PENDENTE
+  PAGA
+}
+
 model Categoria {
   id        String        @id @default(uuid())
-  nome      String        // Ex: "Alimentação", "Salário", "Transporte"
-  icone     String?       // Nome do ícone para o Expo (Ex: "fast-food")
-  cor       String?       // Cor em Hexadecimal para os gráficos do front (#FF5733)
+  nome      String // Ex: "Alimentação", "Salário", "Transporte"
+  icone     String? // Nome do ícone para o Expo (Ex: "fast-food")
+  cor       String? // Cor em Hexadecimal para os gráficos do front (#FF5733)
   tipo      TipoTransacao // Define se é uma categoria de receita ou despesa
   usuarioId String
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  transacoes Transacao[]
+  transacoes   Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("categorias")
 }
 
 model Transacao {
-  id           String        @id @default(uuid())
-  descricao    String        // Ex: "Supermercado Zona Sul"
-  valor        Int           // Valor EM CENTAVOS (Sempre positivo)
+  id           String          @id @default(uuid())
+  descricao    String // Ex: "Supermercado Zona Sul"
+  valor        Int // Valor EM CENTAVOS (Sempre positivo)
   tipo         TipoTransacao
-  data         DateTime      // Data da transação (Guardar sempre em UTC)
-  criadoEm     DateTime      @default(now())
-  atualizadoEm DateTime      @updatedAt
+  status       StatusTransacao @default(PAGA)
+  data         DateTime // Data da transação (Guardar sempre em UTC)
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
 
   // Chaves estrangeiras obrigatórias
-  usuarioId    String
-  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  contaId      String
-  conta        Conta         @relation(fields: [contaId], references: [id], onDelete: Cascade)
-  
-  categoriaId  String
-  categoria    Categoria     @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  contaId String
+  conta   Conta  @relation(fields: [contaId], references: [id], onDelete: Cascade)
+
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // ⚠️ NOVO CAMPO: Se for nulo, é uma transação avulsa. Se tiver ID, pertence a uma recorrência.
+  recorrenciaId String?
+  recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
 
   @@map("transacoes")
+}
+
+enum FrequenciaRecorrencia {
+  SEMANAL
+  MENSAL
+  ANUAL
+  PERSONALIZADA
+}
+
+enum TipoIntervalo {
+  DIAS
+  DIAS_UTEIS
+  SEMANAS
+  MESES
+  ANOS
+}
+
+model Recorrencia {
+  id             String                @id @default(uuid())
+  descricao      String // Ex: "Assinatura Netflix"
+  valor          Int // Valor base em centavos
+  tipo           TipoTransacao
+  frequencia     FrequenciaRecorrencia // SEMANAL, MENSAL, ANUAL, PERSONALIZADA
+  intervaloValor Int? // Ex: 15
+  intervaloTipo  TipoIntervalo? // Ex: DIAS, DIAS_UTEIS
+  dataInicio     DateTime
+  dataFim        DateTime? // Opcional (nulo se for uma assinatura "eterna")
+  criadoEm       DateTime              @default(now())
+  atualizadoEm   DateTime              @updatedAt
+
+  // Chaves Estrangeiras
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  contaId     String
+  conta       Conta     @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // Relacionamento com as instâncias de transações geradas
+  transacoes Transacao[]
+
+  @@map("recorrencias")
 }
