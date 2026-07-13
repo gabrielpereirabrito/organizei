@@ -3,7 +3,8 @@ import { cadastro, login } from './controllers/auth'
 import { verificarJwt } from './middlewares/verificar-jwt'
 import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta } from './controllers/contas'
 import { criarCategoria, listarCategorias } from './controllers/categorias'
-import { criarTransacao, resumoMensal } from './controllers/transacoes'
+import { criarTransacao, resumoMensal, editarTransacao, deletarTransacao } from './controllers/transacoes'
+import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote } from './controllers/recorrencias'
 
 export async function appRoutes(app: FastifyInstance) {
   // Rotas Públicas
@@ -28,6 +29,13 @@ export async function appRoutes(app: FastifyInstance) {
 
     // Transações
     authedApp.post('/transacoes', criarTransacao)
+    authedApp.put('/transacoes/:id', editarTransacao)
+    authedApp.delete('/transacoes/:id', deletarTransacao)
     authedApp.get('/transacoes/resumo-mensal', resumoMensal)
+
+    // Recorrências
+    authedApp.post('/recorrencias', criarRecorrencia)
+    authedApp.put('/recorrencias/:id', editarRecorrenciaEmLote)
+    authedApp.delete('/recorrencias/:id', deletarRecorrenciaEmLote)
   })
 }
