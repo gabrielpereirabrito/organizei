@@ -19,6 +19,7 @@ model Usuario {
   contas       Conta[]
   categorias   Categoria[]
   transacoes   Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("usuarios")
 }
@@ -30,10 +31,12 @@ model Conta {
   saldoAtual   Int      // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
   usuarioId    String
   usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ativa        Boolean  @default(true)
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   transacoes   Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("contas")
 }
@@ -53,6 +56,7 @@ model Categoria {
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   transacoes Transacao[]
+  recorrencias Recorrencia[]
 
   @@map("categorias")
 }
@@ -76,5 +80,40 @@ model Transacao {
   categoriaId  String
   categoria    Categoria     @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
 
+  // ⚠️ NOVO CAMPO: Se for nulo, é uma transação avulsa. Se tiver ID, pertence a uma recorrência.
+  recorrenciaId String?
+  recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
+
   @@map("transacoes")
+}
+
+enum FrequenciaRecorrencia {
+  SEMANAL
+  MENSAL
+  ANUAL
+}
+
+model Recorrencia {
+  id           String               @id @default(uuid())
+  descricao    String               // Ex: "Assinatura Netflix"
+  valor        Int                  // Valor base em centavos
+  tipo         TipoTransacao
+  frequencia   FrequenciaRecorrencia // SEMANAL, MENSAL, ANUAL
+  dataInicio   DateTime
+  dataFim      DateTime?            // Opcional (nulo se for uma assinatura "eterna")
+  criadoEm     DateTime             @default(now())
+  atualizadoEm DateTime             @updatedAt
+
+  // Chaves Estrangeiras
+  usuarioId    String
+  usuario      Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  contaId      String
+  conta        Conta                @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  categoriaId  String
+  categoria    Categoria            @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // Relacionamento com as instâncias de transações geradas
+  transacoes   Transacao[]
+
+  @@map("recorrencias")
 }
