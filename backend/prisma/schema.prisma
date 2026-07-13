@@ -16,10 +16,11 @@ model Usuario {
   atualizadoEm DateTime @updatedAt
 
   // Relacionamentos
-  contas       Conta[]
-  categorias   Categoria[]
-  transacoes   Transacao[]
-  recorrencias Recorrencia[]
+  contas          Conta[]
+  categorias      Categoria[]
+  transacoes      Transacao[]
+  recorrencias    Recorrencia[]
+  metasCategorias MetaCategoria[]
 
   @@map("usuarios")
 }
@@ -60,8 +61,9 @@ model Categoria {
   usuarioId String
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  transacoes   Transacao[]
-  recorrencias Recorrencia[]
+  transacoes      Transacao[]
+  recorrencias    Recorrencia[]
+  metasCategorias MetaCategoria[]
 
   @@map("categorias")
 }
@@ -133,4 +135,23 @@ model Recorrencia {
   transacoes Transacao[]
 
   @@map("recorrencias")
+}
+
+model MetaCategoria {
+  id           String   @id @default(uuid())
+  limite       Int // Valor limite EM CENTAVOS (Ex: 70000 para R$ 700)
+  mes          Int // Mês de vigência (1 a 12)
+  ano          Int // Ano de vigência (Ex: 2026)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // Chaves Estrangeiras
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // Garante que o usuário só possa ter UMA meta por categoria em um mesmo mês/ano
+  @@unique([usuarioId, categoriaId, mes, ano])
+  @@map("metas_categorias")
 }
