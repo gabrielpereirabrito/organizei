@@ -31,6 +31,7 @@ model Conta {
   saldoAtual   Int // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
   usuarioId    String
   usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ativa        Boolean  @default(true)
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

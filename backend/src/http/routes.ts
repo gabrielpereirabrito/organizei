@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { cadastro, login } from './controllers/auth'
 import { verificarJwt } from './middlewares/verificar-jwt'
-import { criarConta, listarContas } from './controllers/contas'
+import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta } from './controllers/contas'
 import { criarCategoria, listarCategorias } from './controllers/categorias'
 import { criarTransacao, resumoMensal, editarTransacao, deletarTransacao } from './controllers/transacoes'
 import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote } from './controllers/recorrencias'
@@ -18,6 +18,10 @@ export async function appRoutes(app: FastifyInstance) {
     // Contas
     authedApp.post('/contas', criarConta)
     authedApp.get('/contas', listarContas)
+    authedApp.get('/contas/:id', buscarContaPorId)
+    authedApp.put('/contas/:id', atualizarConta)
+    authedApp.delete('/contas/:id', deletarConta)
+    authedApp.patch('/contas/:id/inativar', inativarConta)
 
     // Categorias
     authedApp.post('/categorias', criarCategoria)
