@@ -3,3 +3,5 @@ docs/adr/
 docs/esquemas/
 docs/fluxos/
 docs/skills/
+docs/spec/
+.agents/*

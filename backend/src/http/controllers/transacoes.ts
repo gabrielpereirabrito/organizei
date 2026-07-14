@@ -1,13 +1,13 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { Prisma, TipoTransacao, StatusTransacao } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 const criarTransacaoBodySchema = z.object({
   descricao: z.string().min(1),
   valor: z.number().positive(), // Em centavos, sempre positivo no payload
-  tipo: z.nativeEnum(TipoTransacao),
-  status: z.nativeEnum(StatusTransacao).default('PAGA'),
+  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
+  status: z.enum(['PENDENTE', 'PAGA']).default('PAGA'),
   data: z.coerce.date(), // Converte string ISO-8601 para Date do JS
   contaId: z.string().uuid(),
   categoriaId: z.string().uuid(),
@@ -16,8 +16,8 @@ const criarTransacaoBodySchema = z.object({
 const editarTransacaoBodySchema = z.object({
   descricao: z.string().min(1).optional(),
   valor: z.number().positive().optional(),
-  tipo: z.nativeEnum(TipoTransacao).optional(),
-  status: z.nativeEnum(StatusTransacao).optional(),
+  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']).optional(),
+  status: z.enum(['PENDENTE', 'PAGA']).optional(),
   data: z.coerce.date().optional(),
   contaId: z.string().uuid().optional(),
   categoriaId: z.string().uuid().optional(),

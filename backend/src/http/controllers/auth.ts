@@ -26,7 +26,7 @@ export async function cadastro(request: FastifyRequest, reply: FastifyReply) {
   })
 
   if (usuarioExistente) {
-    return reply.status(400).send({ message: 'E-mail já cadastrado.' })
+    return reply.status(409).send({ message: 'E-mail já cadastrado.' })
   }
 
   // Criptografa a senha
@@ -82,14 +82,18 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
   })
 
   if (!usuario) {
-    return reply.status(400).send({ message: 'Credenciais inválidas.' })
+    return reply.status(404).send({ message: 'Usuário não encontrado com este e-mail.' })
+  }
+
+  if (!usuario.senha) {
+    return reply.status(400).send({ message: 'Este usuário foi cadastrado via provedor externo (ex: Google) e não possui senha.' })
   }
 
   // Valida a senha
   const senhaBate = await compare(senha, usuario.senha)
 
   if (!senhaBate) {
-    return reply.status(400).send({ message: 'Credenciais inválidas.' })
+    return reply.status(401).send({ message: 'Senha incorreta.' })
   }
 
   // Gera o token JWT

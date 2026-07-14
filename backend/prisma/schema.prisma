@@ -16,34 +16,45 @@ model Usuario {
   atualizadoEm DateTime @updatedAt
 
   // Relacionamentos
-  contas       Conta[]
-  categorias   Categoria[]
-  transacoes   Transacao[]
-  recorrencias Recorrencia[]
+  contas          Conta[]
+  categorias      Categoria[]
+  transacoes      Transacao[]
+  recorrencias    Recorrencia[]
+  metasCategorias MetaCategoria[]
 
   @@map("usuarios")
 }
 
+enum TipoConta {
+  CORRENTE
+  POUPANCA
+  CARTEIRA
+  INVESTIMENTO
+}
+
 model Conta {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   nome         String // Ex: "Conta Corrente Itaú", "Carteira", "Nubank"
-  tipo         String // Ex: "CORRENTE", "POUPANCA", "DINHEIRO"
+  tipo         TipoConta // Ex: "CORRENTE", "POUPANCA", "DINHEIRO"
   saldoAtual   Int // Saldo guardado EM CENTAVOS (Ex: R$ 150,00 = 15000)
   usuarioId    String
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  ativa        Boolean  @default(true)
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ativa        Boolean   @default(true)
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
 
-  transacoes   Transacao[]
-  recorrencias Recorrencia[]
+  transacoes              Transacao[]   @relation("ContaOrigem")
+  transferenciasRecebidas Transacao[]   @relation("ContaDestino")
+  recorrencias            Recorrencia[]
 
+  @@index([usuarioId])
   @@map("contas")
 }
 
 enum TipoTransacao {
   RECEITA // Entradas
   DESPESA // Saídas / Gastos
+  TRANSFERENCIA // Transferências entre contas
 }
 
 enum StatusTransacao {
@@ -57,12 +68,15 @@ model Categoria {
   icone     String? // Nome do ícone para o Expo (Ex: "fast-food")
   cor       String? // Cor em Hexadecimal para os gráficos do front (#FF5733)
   tipo      TipoTransacao // Define se é uma categoria de receita ou despesa
+  ativa     Boolean       @default(true)
   usuarioId String
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  transacoes   Transacao[]
-  recorrencias Recorrencia[]
+  transacoes      Transacao[]
+  recorrencias    Recorrencia[]
+  metasCategorias MetaCategoria[]
 
+  @@index([usuarioId])
   @@map("categorias")
 }
 
@@ -81,7 +95,11 @@ model Transacao {
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   contaId String
-  conta   Conta  @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  conta   Conta  @relation("ContaOrigem", fields: [contaId], references: [id], onDelete: Cascade)
+
+  // Opcional: usado apenas se for TRANSFERENCIA
+  contaDestinoId String?
+  contaDestino   Conta?  @relation("ContaDestino", fields: [contaDestinoId], references: [id], onDelete: Cascade)
 
   categoriaId String
   categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
@@ -90,6 +108,7 @@ model Transacao {
   recorrenciaId String?
   recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
 
+  @@index([usuarioId, data])
   @@map("transacoes")
 }
 
@@ -132,5 +151,26 @@ model Recorrencia {
   // Relacionamento com as instâncias de transações geradas
   transacoes Transacao[]
 
+  @@index([usuarioId])
   @@map("recorrencias")
+}
+
+model MetaCategoria {
+  id           String   @id @default(uuid())
+  limite       Int // Valor limite EM CENTAVOS (Ex: 70000 para R$ 700)
+  mes          Int // Mês de vigência (1 a 12)
+  ano          Int // Ano de vigência (Ex: 2026)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // Chaves Estrangeiras
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // Garante que o usuário só possa ter UMA meta por categoria em um mesmo mês/ano
+  @@unique([usuarioId, categoriaId, mes, ano])
+  @@index([usuarioId])
+  @@map("metas_categorias")
 }

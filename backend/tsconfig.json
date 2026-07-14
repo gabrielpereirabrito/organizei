@@ -4,9 +4,8 @@
     "module": "commonjs",
     "lib": ["es2022"],
     "moduleResolution": "node",
-    "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "resolveJsonModule": true,
     "allowJs": true,
@@ -14,7 +13,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types", "./src/@types"]
   },
   "include": ["src/**/*", "prisma.config.ts"]
 }
