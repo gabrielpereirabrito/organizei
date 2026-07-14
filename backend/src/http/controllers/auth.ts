@@ -81,7 +81,7 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
     where: { email },
   })
 
-  if (!usuario) {
+  if (!usuario || !usuario.senha) {
     return reply.status(400).send({ message: 'Credenciais inválidas.' })
   }
 
