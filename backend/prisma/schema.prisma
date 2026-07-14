@@ -68,6 +68,7 @@ model Categoria {
   icone     String? // Nome do ícone para o Expo (Ex: "fast-food")
   cor       String? // Cor em Hexadecimal para os gráficos do front (#FF5733)
   tipo      TipoTransacao // Define se é uma categoria de receita ou despesa
+  ativa     Boolean       @default(true)
   usuarioId String
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
