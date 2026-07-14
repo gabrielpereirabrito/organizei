@@ -1,17 +1,17 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { TipoTransacao } from '@prisma/client'
+
 
 const listarCategoriasQuerySchema = z.object({
-  tipo: z.nativeEnum(TipoTransacao).optional(),
+  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']).optional(),
 })
 
 const criarCategoriaBodySchema = z.object({
   nome: z.string().min(1),
   icone: z.string().optional(),
   cor: z.string().optional(),
-  tipo: z.nativeEnum(TipoTransacao),
+  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
 })
 
 export async function listarCategorias(request: FastifyRequest, reply: FastifyReply) {

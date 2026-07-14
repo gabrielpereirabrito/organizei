@@ -1,15 +1,15 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { Prisma, TipoTransacao, FrequenciaRecorrencia, TipoIntervalo } from '@prisma/client'
+import { Prisma, FrequenciaRecorrencia, TipoIntervalo } from '@prisma/client'
 
 const criarRecorrenciaBodySchema = z.object({
   descricao: z.string().min(1),
   valor: z.number().positive(),
-  tipo: z.nativeEnum(TipoTransacao),
-  frequencia: z.nativeEnum(FrequenciaRecorrencia),
+  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
+  frequencia: z.enum(['SEMANAL', 'MENSAL', 'ANUAL', 'PERSONALIZADA']),
   intervaloValor: z.number().positive().optional(),
-  intervaloTipo: z.nativeEnum(TipoIntervalo).optional(),
+  intervaloTipo: z.enum(['DIAS', 'DIAS_UTEIS', 'SEMANAS', 'MESES', 'ANOS']).optional(),
   dataInicio: z.coerce.date(),
   duracaoMeses: z.number().positive().default(12),
   contaId: z.string().uuid(),
