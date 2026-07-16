@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { checkOwnership } from '@/utils/checkOwnership'
 
 // Payload: { nome: "Itaú", tipo: "CORRENTE", saldoInicial: 50000 }
 const criarContaBodySchema = z.object({
@@ -42,10 +43,7 @@ export async function buscarContaPorId(request: FastifyRequest, reply: FastifyRe
   const usuarioId = request.user.sub
 
   const conta = await prisma.conta.findUnique({ where: { id } })
-
-  if (!conta || conta.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Conta não encontrada' })
-  }
+  checkOwnership(conta, usuarioId, 'Conta')
 
   return reply.status(200).send(conta)
 }
@@ -62,10 +60,7 @@ export async function atualizarConta(request: FastifyRequest, reply: FastifyRepl
   const usuarioId = request.user.sub
 
   const conta = await prisma.conta.findUnique({ where: { id } })
-
-  if (!conta || conta.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Conta não encontrada' })
-  }
+  checkOwnership(conta, usuarioId, 'Conta')
 
   const contaAtualizada = await prisma.conta.update({
     where: { id },
@@ -81,10 +76,7 @@ export async function deletarConta(request: FastifyRequest, reply: FastifyReply)
   const usuarioId = request.user.sub
 
   const conta = await prisma.conta.findUnique({ where: { id } })
-
-  if (!conta || conta.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Conta não encontrada' })
-  }
+  checkOwnership(conta, usuarioId, 'Conta')
 
   await prisma.conta.delete({
     where: { id },
@@ -99,10 +91,7 @@ export async function inativarConta(request: FastifyRequest, reply: FastifyReply
   const usuarioId = request.user.sub
 
   const conta = await prisma.conta.findUnique({ where: { id } })
-
-  if (!conta || conta.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Conta não encontrada' })
-  }
+  checkOwnership(conta, usuarioId, 'Conta')
 
   const contaInativada = await prisma.conta.update({
     where: { id },
@@ -118,10 +107,7 @@ export async function ativarConta(request: FastifyRequest, reply: FastifyReply) 
   const usuarioId = request.user.sub
 
   const conta = await prisma.conta.findUnique({ where: { id } })
-
-  if (!conta || conta.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Conta não encontrada' })
-  }
+  checkOwnership(conta, usuarioId, 'Conta')
 
   const contaAtivada = await prisma.conta.update({
     where: { id },
@@ -129,4 +115,17 @@ export async function ativarConta(request: FastifyRequest, reply: FastifyReply) 
   })
 
   return reply.status(200).send(contaAtivada)
+}
+
+export async function obterSaldoTotal(request: FastifyRequest, reply: FastifyReply) {
+  const usuarioId = request.user.sub
+
+  const contas = await prisma.conta.findMany({
+    where: { usuarioId, ativa: true },
+    select: { saldoAtual: true }
+  })
+
+  const saldoTotal = contas.reduce((acc, conta) => acc + conta.saldoAtual, 0)
+
+  return reply.status(200).send({ saldoTotal })
 }

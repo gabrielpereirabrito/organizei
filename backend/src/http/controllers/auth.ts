@@ -51,10 +51,11 @@ export async function cadastro(request: FastifyRequest, reply: FastifyReply) {
     data: categoriasDoUsuario,
   })
 
-  // Gera o token JWT
-  const token = await reply.jwtSign({}, { sign: { sub: usuario.id } })
+  // Gera os tokens JWT
+  const token = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '15m' } })
+  const refreshToken = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '7d' } })
 
-  // Define o Cookie HTTP-Only para a Web
+  // Define os Cookies HTTP-Only para a Web
   reply.setCookie('token', token, {
     path: '/',
     secure: true, // Requer HTTPS (na Render rodará nativo)
@@ -62,9 +63,17 @@ export async function cadastro(request: FastifyRequest, reply: FastifyReply) {
     sameSite: 'lax',
   })
 
+  reply.setCookie('refreshToken', refreshToken, {
+    path: '/',
+    secure: true,
+    httpOnly: true,
+    sameSite: 'lax',
+  })
+
   // Retorna HTTP 201 com o Token e dados (conforme o contrato do MVP)
   return reply.status(201).send({
     token,
+    refreshToken,
     usuario: {
       id: usuario.id,
       nome: usuario.nome,
@@ -96,11 +105,19 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
     return reply.status(401).send({ message: 'Senha incorreta.' })
   }
 
-  // Gera o token JWT
-  const token = await reply.jwtSign({}, { sign: { sub: usuario.id } })
+  // Gera os tokens JWT
+  const token = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '15m' } })
+  const refreshToken = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '7d' } })
 
-  // Define o Cookie HTTP-Only para a Web
+  // Define os Cookies HTTP-Only para a Web
   reply.setCookie('token', token, {
+    path: '/',
+    secure: true,
+    httpOnly: true,
+    sameSite: 'lax',
+  })
+
+  reply.setCookie('refreshToken', refreshToken, {
     path: '/',
     secure: true,
     httpOnly: true,
@@ -109,10 +126,52 @@ export async function login(request: FastifyRequest, reply: FastifyReply) {
 
   return reply.status(200).send({
     token,
+    refreshToken,
     usuario: {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
     },
   })
+}
+
+export async function refresh(request: FastifyRequest, reply: FastifyReply) {
+  const refreshToken = request.cookies.refreshToken || (request.headers['x-refresh-token'] as string)
+
+  if (!refreshToken) {
+    return reply.status(401).send({ message: 'Refresh token não fornecido.' })
+  }
+
+  try {
+    const decoded = request.server.jwt.verify<{ sub: string }>(refreshToken)
+    const usuario = await prisma.usuario.findUnique({ where: { id: decoded.sub } })
+    
+    if (!usuario) {
+      return reply.status(401).send({ message: 'Usuário não encontrado.' })
+    }
+
+    const newToken = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '15m' } })
+    const newRefreshToken = await reply.jwtSign({}, { sign: { sub: usuario.id, expiresIn: '7d' } })
+
+    reply.setCookie('token', newToken, {
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+
+    reply.setCookie('refreshToken', newRefreshToken, {
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+
+    return reply.status(200).send({
+      token: newToken,
+      refreshToken: newRefreshToken,
+    })
+  } catch (err) {
+    return reply.status(401).send({ message: 'Refresh token inválido ou expirado.' })
+  }
 }
