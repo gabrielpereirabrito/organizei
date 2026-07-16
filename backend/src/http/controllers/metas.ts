@@ -78,7 +78,7 @@ export async function listarMetas(request: FastifyRequest, reply: FastifyReply) 
       usuarioId,
       status: 'PAGA',
       tipo: 'DESPESA',
-      data: {
+      dataVencimento: {
         gte: dataInicial,
         lte: dataFinal,
       },

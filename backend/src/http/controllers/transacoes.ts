@@ -9,8 +9,7 @@ const criarTransacaoBodySchema = z.object({
   valor: z.number().positive(), // Em centavos, sempre positivo no payload
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
   status: z.enum(['PENDENTE', 'PAGA', 'VENCIDA']).default('PAGA'),
-  data: z.coerce.date(), // Converte string ISO-8601 para Date do JS
-  dataVencimento: z.coerce.date().optional(),
+  dataVencimento: z.coerce.date(), // Converte string ISO-8601 para Date do JS
   dataPagamento: z.coerce.date().optional(),
   contaId: z.string().uuid(),
   categoriaId: z.string().uuid(),
@@ -21,7 +20,6 @@ const editarTransacaoBodySchema = z.object({
   valor: z.number().positive().optional(),
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']).optional(),
   status: z.enum(['PENDENTE', 'PAGA', 'VENCIDA']).optional(),
-  data: z.coerce.date().optional(),
   dataVencimento: z.coerce.date().optional(),
   dataPagamento: z.coerce.date().optional().nullable(),
   contaId: z.string().uuid().optional(),
@@ -45,7 +43,7 @@ const resumoMensalQuerySchema = z.object({
 })
 
 export async function criarTransacao(request: FastifyRequest, reply: FastifyReply) {
-  const { descricao, valor, tipo, status, data, dataVencimento, dataPagamento, contaId, categoriaId } = criarTransacaoBodySchema.parse(request.body)
+  const { descricao, valor, tipo, status, dataVencimento, dataPagamento, contaId, categoriaId } = criarTransacaoBodySchema.parse(request.body)
   const usuarioId = request.user.sub
 
   // Verifica se a conta e categoria pertencem ao usuário logado
@@ -59,8 +57,7 @@ export async function criarTransacao(request: FastifyRequest, reply: FastifyRepl
 
   const operations: any[] = []
 
-  const dataVencimentoFinal = dataVencimento || data
-  const dataPagamentoFinal = status === 'PAGA' ? (dataPagamento || dataVencimentoFinal) : null
+  const dataPagamentoFinal = status === 'PAGA' ? (dataPagamento || dataVencimento) : null
 
   operations.push(
     prisma.transacao.create({
@@ -69,8 +66,7 @@ export async function criarTransacao(request: FastifyRequest, reply: FastifyRepl
         valor,
         tipo,
         status,
-        data,
-        dataVencimento: dataVencimentoFinal,
+        dataVencimento,
         dataPagamento: dataPagamentoFinal,
         usuarioId,
         contaId,
@@ -261,7 +257,7 @@ export async function listarTransacoes(request: FastifyRequest, reply: FastifyRe
   const [transacoes, total] = await Promise.all([
     prisma.transacao.findMany({
       where,
-      orderBy: { data: 'desc' },
+      orderBy: { dataVencimento: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
       include: {
