@@ -60,6 +60,7 @@ enum TipoTransacao {
 enum StatusTransacao {
   PENDENTE
   PAGA
+  VENCIDA
 }
 
 model Categoria {
@@ -81,14 +82,16 @@ model Categoria {
 }
 
 model Transacao {
-  id           String          @id @default(uuid())
-  descricao    String // Ex: "Supermercado Zona Sul"
-  valor        Int // Valor EM CENTAVOS (Sempre positivo)
-  tipo         TipoTransacao
-  status       StatusTransacao @default(PAGA)
-  data         DateTime // Data da transação (Guardar sempre em UTC)
-  criadoEm     DateTime        @default(now())
-  atualizadoEm DateTime        @updatedAt
+  id             String          @id @default(uuid())
+  descricao      String // Ex: "Supermercado Zona Sul"
+  valor          Int // Valor EM CENTAVOS (Sempre positivo)
+  tipo           TipoTransacao
+  status         StatusTransacao @default(PAGA)
+  data           DateTime // Data da transação (Referência)
+  dataVencimento DateTime // Data em que a conta vence
+  dataPagamento  DateTime? // Data em que a conta foi efetivamente paga
+  criadoEm       DateTime        @default(now())
+  atualizadoEm   DateTime        @updatedAt
 
   // Chaves estrangeiras obrigatórias
   usuarioId String
@@ -109,6 +112,7 @@ model Transacao {
   recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
 
   @@index([usuarioId, data])
+  @@index([usuarioId, status, dataVencimento])
   @@map("transacoes")
 }
 
