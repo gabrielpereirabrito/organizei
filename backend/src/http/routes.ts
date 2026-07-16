@@ -1,15 +1,17 @@
 import { FastifyInstance } from 'fastify'
-import { cadastro, login } from './controllers/auth'
+import { cadastro, login, refresh } from './controllers/auth'
 import { verificarJwt } from './middlewares/verificar-jwt'
-import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta } from './controllers/contas'
+import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta, ativarConta, obterSaldoTotal } from './controllers/contas'
 import { criarCategoria, listarCategorias, buscarCategoriaPorId, inativarCategoria, ativarCategoria } from './controllers/categorias'
-import { criarTransacao, resumoMensal, editarTransacao, deletarTransacao } from './controllers/transacoes'
+import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deletarTransacao } from './controllers/transacoes'
 import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote } from './controllers/recorrencias'
+import { criarMeta, listarMetas, atualizarMeta, deletarMeta } from './controllers/metas'
 
 export async function appRoutes(app: FastifyInstance) {
   // Rotas Públicas
   app.post('/auth/cadastro', cadastro)
   app.post('/auth/login', login)
+  app.post('/auth/refresh', refresh)
 
   // Rotas Autenticadas (Requerem JWT/Cookie)
   app.register(async (authedApp) => {
@@ -18,6 +20,7 @@ export async function appRoutes(app: FastifyInstance) {
     // Contas
     authedApp.post('/contas', criarConta)
     authedApp.get('/contas', listarContas)
+    authedApp.get('/contas/saldo-total', obterSaldoTotal)
     authedApp.get('/contas/:id', buscarContaPorId)
     authedApp.put('/contas/:id', atualizarConta)
     authedApp.delete('/contas/:id', deletarConta)
@@ -32,6 +35,7 @@ export async function appRoutes(app: FastifyInstance) {
 
     // Transações
     authedApp.post('/transacoes', criarTransacao)
+    authedApp.get('/transacoes', listarTransacoes)
     authedApp.put('/transacoes/:id', editarTransacao)
     authedApp.delete('/transacoes/:id', deletarTransacao)
     authedApp.get('/transacoes/resumo-mensal', resumoMensal)
@@ -40,5 +44,11 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.post('/recorrencias', criarRecorrencia)
     authedApp.put('/recorrencias/:id', editarRecorrenciaEmLote)
     authedApp.delete('/recorrencias/:id', deletarRecorrenciaEmLote)
+
+    // Metas/Orçamentos
+    authedApp.post('/metas', criarMeta)
+    authedApp.get('/metas', listarMetas)
+    authedApp.put('/metas/:id', atualizarMeta)
+    authedApp.delete('/metas/:id', deletarMeta)
   })
 }

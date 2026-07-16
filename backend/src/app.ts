@@ -8,6 +8,8 @@ import fastifyHelmet from '@fastify/helmet'
 import fastifyRateLimit from '@fastify/rate-limit'
 import { env } from './env'
 
+import { AppError } from './utils/AppError'
+
 export const app = fastify()
 
 // Configuração do CORS para permitir que o Expo (Mobile e Web) se conecte
@@ -44,6 +46,10 @@ app.setErrorHandler((error, _request, reply) => {
     return reply
       .status(400)
       .send({ message: 'Erro de validação.', issues: error.format() })
+  }
+
+  if (error instanceof AppError) {
+    return reply.status(error.statusCode).send({ message: error.message })
   }
 
   if (process.env.NODE_ENV !== 'production') {

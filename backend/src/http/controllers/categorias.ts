@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-
+import { checkOwnership } from '@/utils/checkOwnership'
 
 const listarCategoriasQuerySchema = z.object({
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']).optional(),
@@ -54,10 +54,7 @@ export async function buscarCategoriaPorId(request: FastifyRequest, reply: Fasti
   const usuarioId = request.user.sub
 
   const categoria = await prisma.categoria.findUnique({ where: { id } })
-
-  if (!categoria || categoria.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Categoria não encontrada' })
-  }
+  checkOwnership(categoria, usuarioId, 'Categoria')
 
   return reply.status(200).send(categoria)
 }
@@ -68,10 +65,7 @@ export async function inativarCategoria(request: FastifyRequest, reply: FastifyR
   const usuarioId = request.user.sub
 
   const categoria = await prisma.categoria.findUnique({ where: { id } })
-
-  if (!categoria || categoria.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Categoria não encontrada' })
-  }
+  checkOwnership(categoria, usuarioId, 'Categoria')
 
   const categoriaInativada = await prisma.categoria.update({
     where: { id },
@@ -87,10 +81,7 @@ export async function ativarCategoria(request: FastifyRequest, reply: FastifyRep
   const usuarioId = request.user.sub
 
   const categoria = await prisma.categoria.findUnique({ where: { id } })
-
-  if (!categoria || categoria.usuarioId !== usuarioId) {
-    return reply.status(404).send({ message: 'Categoria não encontrada' })
-  }
+  checkOwnership(categoria, usuarioId, 'Categoria')
 
   const categoriaAtivada = await prisma.categoria.update({
     where: { id },
