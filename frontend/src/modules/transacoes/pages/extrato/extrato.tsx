@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useTransacoes, useDeletarTransacao, ITransacao } from '../../hooks/useTransacoes';
+import { NovaTransacaoSheet, BottomSheetRef } from '../../components/NovaTransacaoSheet';
 import { Card, Button } from '@/shared/components/ui';
-import { formatarMoeda } from '@/shared/utils/currency';
+import { useFormatarMoeda } from '@/shared/utils/currency';
 import { Plus, Trash2 } from 'lucide-react-native';
 
 export function TransacoesPage() {
   const { data, isLoading, isError } = useTransacoes();
   const { mutate: deletar } = useDeletarTransacao();
+  const formatarMoeda = useFormatarMoeda();
+  const bottomSheetRef = useRef<BottomSheetRef>(null);
+
+  const handleOpenSheet = () => bottomSheetRef.current?.expand();
 
   function handleDelete(id: string) {
     Alert.alert('Atenção', 'Deseja realmente deletar esta transação?', [
@@ -23,24 +28,24 @@ export function TransacoesPage() {
       <Card className="mb-3">
         <View className="flex-row justify-between items-center mb-2">
           <View className="flex-1">
-            <Text className="text-lg font-semibold text-slate-800 dark:text-white">{item.descricao}</Text>
+            <Text className="text-lg font-semibold text-finance-texto dark:text-white">{item.descricao}</Text>
             {item.categoria && (
               <View className="flex-row items-center gap-1 mt-1">
                 <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.categoria.cor }} />
-                <Text className="text-sm text-slate-500">{item.categoria.nome}</Text>
+                <Text className="text-sm text-finance-mutado">{item.categoria.nome}</Text>
               </View>
             )}
           </View>
-          <Text className={`text-lg font-bold ${isReceita ? 'text-green-600' : 'text-red-500'}`}>
+          <Text className={`text-lg font-bold ${isReceita ? 'text-finance-verde' : 'text-finance-vermelho'}`}>
             {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
           </Text>
         </View>
         <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-          <Text className="text-sm text-slate-400">
+          <Text className="text-sm text-finance-mutado">
             {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
           </Text>
           <TouchableOpacity onPress={() => handleDelete(item.id)}>
-            <Trash2 size={18} color="#ef4444" />
+            <Trash2 size={18} color="#FF4C4C" />
           </TouchableOpacity>
         </View>
       </Card>
@@ -48,10 +53,10 @@ export function TransacoesPage() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50 dark:bg-slate-900 p-6">
+    <View className="flex-1 bg-finance-fundo dark:bg-slate-900 p-6">
       <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-3xl font-bold text-slate-900 dark:text-white">Extrato</Text>
-        <Button size="sm">
+        <Text className="text-3xl font-bold text-finance-texto dark:text-white">Extrato</Text>
+        <Button size="sm" onPress={handleOpenSheet}>
           <Plus size={20} color="#fff" />
           <Text className="text-white font-medium ml-2">Nova</Text>
         </Button>
@@ -73,6 +78,8 @@ export function TransacoesPage() {
           }
         />
       )}
+
+      <NovaTransacaoSheet ref={bottomSheetRef} />
     </View>
   );
 }

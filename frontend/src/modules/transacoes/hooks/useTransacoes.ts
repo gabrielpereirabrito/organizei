@@ -70,3 +70,27 @@ export function useDeletarTransacao() {
     },
   });
 }
+
+export interface INovaTransacao {
+  descricao: string;
+  valor: number;
+  tipo: 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA';
+  dataVencimento: string;
+  categoriaId: string;
+  contaId: string;
+  status: 'PENDENTE' | 'PAGA' | 'VENCIDA';
+}
+
+export function useCriarTransacao() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (nova: INovaTransacao) => {
+      const { data } = await api.post('/transacoes', nova);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: transacoesKeys.all });
+    }
+  });
+}
