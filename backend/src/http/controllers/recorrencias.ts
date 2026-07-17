@@ -34,6 +34,11 @@ const deletarRecorrenciaLoteBodySchema = z.object({
   dataCorte: z.coerce.date(),
 })
 
+const listarRecorrenciasQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+})
+
 
 
 export async function criarRecorrencia(request: FastifyRequest, reply: FastifyReply) {
@@ -168,4 +173,51 @@ export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: F
   })
 
   return reply.status(204).send()
+}
+
+export async function listarRecorrencias(request: FastifyRequest, reply: FastifyReply) {
+  const { page, limit } = listarRecorrenciasQuerySchema.parse(request.query)
+  const usuarioId = request.user.sub
+
+  const [recorrencias, total] = await Promise.all([
+    prisma.recorrencia.findMany({
+      where: { usuarioId },
+      orderBy: { criadoEm: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        categoria: { select: { nome: true, cor: true, icone: true } },
+        conta: { select: { nome: true } },
+      }
+    }),
+    prisma.recorrencia.count({ where: { usuarioId } })
+  ])
+
+  return reply.status(200).send({
+    data: recorrencias,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    }
+  })
+}
+
+export async function buscarRecorrenciaPorId(request: FastifyRequest, reply: FastifyReply) {
+  const paramsSchema = z.object({ id: z.string().uuid() })
+  const { id } = paramsSchema.parse(request.params)
+  const usuarioId = request.user.sub
+
+  const recorrencia = await prisma.recorrencia.findUnique({
+    where: { id },
+    include: {
+      categoria: { select: { nome: true, cor: true, icone: true } },
+      conta: { select: { nome: true } },
+    }
+  })
+
+  checkOwnership(recorrencia, usuarioId, 'Recorrência')
+
+  return reply.status(200).send(recorrencia)
 }

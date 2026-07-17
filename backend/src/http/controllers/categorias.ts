@@ -15,6 +15,12 @@ const criarCategoriaBodySchema = z.object({
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
 })
 
+const atualizarCategoriaBodySchema = z.object({
+  nome: z.string().min(1).optional(),
+  icone: z.string().optional(),
+  cor: z.string().optional(),
+})
+
 export async function listarCategorias(request: FastifyRequest, reply: FastifyReply) {
   const { tipo, ativa } = listarCategoriasQuerySchema.parse(request.query)
   const usuarioId = request.user.sub
@@ -89,4 +95,21 @@ export async function ativarCategoria(request: FastifyRequest, reply: FastifyRep
   })
 
   return reply.status(200).send(categoriaAtivada)
+}
+
+export async function atualizarCategoria(request: FastifyRequest, reply: FastifyReply) {
+  const getParamsSchema = z.object({ id: z.string().uuid() })
+  const { id } = getParamsSchema.parse(request.params)
+  const { nome, icone, cor } = atualizarCategoriaBodySchema.parse(request.body)
+  const usuarioId = request.user.sub
+
+  const categoria = await prisma.categoria.findUnique({ where: { id } })
+  checkOwnership(categoria, usuarioId, 'Categoria')
+
+  const categoriaAtualizada = await prisma.categoria.update({
+    where: { id },
+    data: { nome, icone, cor },
+  })
+
+  return reply.status(200).send(categoriaAtualizada)
 }
