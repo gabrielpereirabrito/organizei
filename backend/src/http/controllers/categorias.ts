@@ -113,3 +113,32 @@ export async function atualizarCategoria(request: FastifyRequest, reply: Fastify
 
   return reply.status(200).send(categoriaAtualizada)
 }
+
+export async function deletarCategoria(request: FastifyRequest, reply: FastifyReply) {
+  const getParamsSchema = z.object({ id: z.string().uuid() })
+  const { id } = getParamsSchema.parse(request.params)
+  const usuarioId = request.user.sub
+
+  const categoria = await prisma.categoria.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { transacoes: true, recorrencias: true, metasCategorias: true }
+      }
+    }
+  })
+
+  checkOwnership(categoria, usuarioId, 'Categoria')
+
+  if (categoria._count.transacoes > 0 || categoria._count.recorrencias > 0 || categoria._count.metasCategorias > 0) {
+    return reply.status(409).send({ 
+      message: 'Esta categoria possui transações, metas ou recorrências vinculadas. Por favor, inative-a em vez de excluir fisicamente.' 
+    })
+  }
+
+  await prisma.categoria.delete({
+    where: { id },
+  })
+
+  return reply.status(204).send()
+}
