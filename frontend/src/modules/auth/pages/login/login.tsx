@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/shared/api-client/api';
 import { useAuthStore } from '../../stores/auth.store';
+import { toastService } from '@/shared/services/toast.service';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,14 +13,15 @@ export function LoginPage() {
   const setAuth = useAuthStore(state => state.setAuth);
 
   async function handleLogin() {
-    if (!email || !senha) return Alert.alert('Erro', 'Preencha todos os campos');
+    if (!email || !senha) return toastService.error('Campos obrigatórios', 'Preencha seu e-mail e senha.');
     setIsLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, senha });
       await setAuth(data.usuario, data.token);
+      toastService.success('Bem-vindo(a) de volta!', 'Login efetuado com sucesso.');
       router.replace('/(app)');
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.message || 'Erro ao realizar login');
+      toastService.error('Erro no login', error.response?.data?.message || 'Verifique suas credenciais.');
     } finally {
       setIsLoading(false);
     }

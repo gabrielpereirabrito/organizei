@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCriarTransacao } from '../hooks/useTransacoes';
 import { useCategorias } from '@/modules/categorias';
+import { useContas } from '@/modules/contas/hooks/useContas';
 import { CurrencyInput, Button, Input } from '@/shared/components/ui';
 import { formatarMoeda } from '@/shared/utils/currency';
 
@@ -14,8 +15,7 @@ const transacaoSchema = z.object({
   valor: z.number().min(1, 'Valor obrigatório'),
   tipo: z.enum(['RECEITA', 'DESPESA']),
   categoriaId: z.string().min(1, 'Categoria é obrigatória'),
-  // Mock contaId, since we don't have accounts yet
-  contaId: z.string().default('uuid-fake-da-conta'), 
+  contaId: z.string().min(1, 'Conta é obrigatória'),
 });
 
 type FormData = z.infer<typeof transacaoSchema>;
@@ -24,8 +24,10 @@ export type BottomSheetRef = BottomSheet;
 
 export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) => {
   const { data: categoriasData } = useCategorias();
+  const { data: contasData } = useContas();
   const { mutateAsync: criarTransacao } = useCriarTransacao();
   const categorias = categoriasData || [];
+  const contas = contasData || [];
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(transacaoSchema),
@@ -34,6 +36,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       valor: 0,
       tipo: 'DESPESA',
       categoriaId: '',
+      contaId: '',
     }
   });
 
@@ -57,7 +60,6 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
         ...data,
         dataVencimento: new Date().toISOString(), // Mocking date today
         status: 'PAGA', // Default to paid
-        contaId: 'c1234567-89ab-cdef-0123-456789abcdef' // Fake UUID just to pass API validations
       });
       reset();
       // @ts-ignore
@@ -124,7 +126,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
           )}
         />
 
-        <Text className="text-sm font-medium text-finance-texto mb-2 mt-2">Categoria</Text>
+        <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2 mt-2">Categoria</Text>
         <View className="flex-row flex-wrap gap-2 mb-6">
           {categoriasFiltradas.map(cat => {
             const isSelected = watch('categoriaId') === cat.id;
@@ -132,14 +134,31 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
               <TouchableOpacity
                 key={cat.id}
                 onPress={() => setValue('categoriaId', cat.id)}
-                className={`px-4 py-2 rounded-full border ${isSelected ? 'border-finance-texto bg-finance-texto' : 'border-slate-300'}`}
+                className={`px-4 py-2 rounded-full border ${isSelected ? 'border-finance-texto bg-finance-texto dark:bg-slate-700 dark:border-slate-500' : 'border-slate-300 dark:border-slate-600'}`}
               >
-                <Text className={isSelected ? 'text-white' : 'text-finance-mutado'}>{cat.nome}</Text>
+                <Text className={isSelected ? 'text-white' : 'text-finance-mutado dark:text-slate-300'}>{cat.nome}</Text>
               </TouchableOpacity>
             )
           })}
         </View>
         {errors.categoriaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.categoriaId.message}</Text>}
+
+        <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2">Conta</Text>
+        <View className="flex-row flex-wrap gap-2 mb-6">
+          {contas.map(conta => {
+            const isSelected = watch('contaId') === conta.id;
+            return (
+              <TouchableOpacity
+                key={conta.id}
+                onPress={() => setValue('contaId', conta.id)}
+                className={`px-4 py-2 rounded-full border ${isSelected ? 'border-finance-verde bg-finance-verde/10' : 'border-slate-300 dark:border-slate-600'}`}
+              >
+                <Text className={isSelected ? 'text-finance-verde font-bold' : 'text-finance-mutado dark:text-slate-300'}>{conta.nome}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+        {errors.contaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.contaId.message}</Text>}
 
         <Button onPress={handleSubmit(onSubmit)} className="mt-4">
           <Text className="text-white font-bold text-lg">Salvar Transação</Text>
