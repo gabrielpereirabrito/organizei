@@ -4,13 +4,15 @@ import { useResumoMensal } from '@/modules/transacoes';
 import { Card } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { useThemeStore } from '@/shared/stores/theme.store';
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react-native';
 
 export function OverviewPage() {
   const hoje = new Date();
   const { data: resumo, isLoading, isError } = useResumoMensal(hoje.getMonth() + 1, hoje.getFullYear());
   const formatarMoeda = useFormatarMoeda();
   const { isOculto, togglePrivacy } = usePrivacyStore();
+  const { theme, setTheme } = useThemeStore();
 
   if (isLoading) {
     return (
@@ -32,9 +34,14 @@ export function OverviewPage() {
     <ScrollView className="flex-1 bg-finance-fundo dark:bg-slate-900 p-6">
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-bold text-finance-texto dark:text-white">Visão Geral</Text>
-        <TouchableOpacity onPress={togglePrivacy} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm">
-          {isOculto ? <EyeOff size={24} color="#71717A" /> : <Eye size={24} color="#1A1A1A" />}
-        </TouchableOpacity>
+        <View className="flex-row gap-3">
+          <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm">
+            {theme === 'dark' ? <Moon size={24} color="#71717A" /> : <Sun size={24} color="#1A1A1A" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={togglePrivacy} className="p-2 bg-white dark:bg-slate-800 rounded-full shadow-sm">
+            {isOculto ? <EyeOff size={24} color="#71717A" /> : <Eye size={24} color="#1A1A1A" />}
+          </TouchableOpacity>
+        </View>
       </View>
       
       <View className="flex-row flex-wrap justify-between gap-4">

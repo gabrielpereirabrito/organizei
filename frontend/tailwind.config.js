@@ -2,17 +2,18 @@
 module.exports = {
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         finance: {
-          verde: '#00B074',
-          vermelho: '#FF4C4C',
-          alerta: '#FFB020',
-          fundo: '#F8F9FA',
-          card: '#FFFFFF',
-          texto: '#1A1A1A',
-          mutado: '#71717A',
+          verde: 'var(--finance-verde)',
+          vermelho: 'var(--finance-vermelho)',
+          alerta: 'var(--finance-alerta)',
+          fundo: 'var(--finance-fundo)',
+          card: 'var(--finance-card)',
+          texto: 'var(--finance-texto)',
+          mutado: 'var(--finance-mutado)',
         }
       }
     },

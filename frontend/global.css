@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --finance-verde: #00B074;
+    --finance-vermelho: #FF4C4C;
+    --finance-alerta: #FFB020;
+    --finance-fundo: #F8F9FA;
+    --finance-card: #FFFFFF;
+    --finance-texto: #1A1A1A;
+    --finance-mutado: #71717A;
+  }
+  .dark {
+    --finance-verde: #00B074;
+    --finance-vermelho: #FF4C4C;
+    --finance-alerta: #FFB020;
+    --finance-fundo: #0f172a;
+    --finance-card: #1e293b;
+    --finance-texto: #f8fafc;
+    --finance-mutado: #94a3b8;
+  }
+}
