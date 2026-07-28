@@ -6,7 +6,13 @@
     "scheme": "organizei",
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Este aplicativo usa o Face ID para um login rápido e seguro"
+        }
+      ]
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
