@@ -13,6 +13,7 @@ export function AppHybridLayout() {
       <Tabs.Screen name="transacoes" options={{ title: 'Extrato' }} />
       <Tabs.Screen name="contas" options={{ title: 'Contas' }} />
       <Tabs.Screen name="categorias" options={{ title: 'Categorias' }} />
+      <Tabs.Screen name="perfil" options={{ title: 'Perfil' }} />
     </Tabs>
   );
 }
@@ -37,6 +38,9 @@ function WebSidebarLayout() {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(app)/categorias')} className="py-2">
             <Text className="text-slate-700 dark:text-slate-300 font-medium text-lg">Categorias</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(app)/perfil')} className="py-2">
+            <Text className="text-slate-700 dark:text-slate-300 font-medium text-lg">Perfil</Text>
           </TouchableOpacity>
         </View>
       </View>
