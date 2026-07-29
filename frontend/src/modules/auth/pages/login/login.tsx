@@ -65,6 +65,7 @@ export function LoginPage() {
   async function handleLogin() {
     if (!email || !senha) return toastService.error('Campos obrigatórios', 'Preencha seu e-mail e senha.');
     setIsLoading(true);
+    toastService.info('Entrando...', 'Verificando credenciais');
     try {
       const { data } = await api.post('/auth/login', { email, senha });
       await setAuth(data.usuario, data.token);
@@ -123,9 +124,9 @@ export function LoginPage() {
 
           <View className="flex-row gap-3 mt-4">
             <TouchableOpacity 
-              className="bg-finance-primaria flex-1 p-4 rounded-lg items-center justify-center opacity-90 active:opacity-100"
+              className={`bg-finance-primaria flex-1 p-4 rounded-lg items-center justify-center ${(!email || !senha || isLoading) ? 'opacity-50' : 'opacity-90 active:opacity-100'}`}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={isLoading || !email || !senha}
             >
               <Text className="text-white font-semibold text-lg">
                 {isLoading ? 'Entrando...' : 'Entrar'}
