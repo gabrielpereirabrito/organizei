@@ -76,6 +76,7 @@ export interface INovaTransacao {
   valor: number;
   tipo: 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA';
   dataVencimento: string;
+  dataPagamento?: string;
   categoriaId: string;
   contaId: string;
   status: 'PENDENTE' | 'PAGA' | 'VENCIDA';
