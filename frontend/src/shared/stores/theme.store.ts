@@ -24,14 +24,8 @@ export const useThemeStore = create<ThemeState>((set) => ({
 }));
 
 export const applyTheme = (theme: ThemeType) => {
-  let resolvedTheme: 'light' | 'dark' = 'light';
-  if (theme === 'system') {
-    resolvedTheme = Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
-  } else {
-    resolvedTheme = theme;
-  }
-  // Aplica a classe ao NativeWind
-  colorScheme.set(resolvedTheme);
+  // A aplicação do NativeWind agora é feita no _layout.tsx via useColorScheme
+  // Isso garante que o contexto do React NativeWind seja atualizado de forma reativa.
 };
 
 export const loadThemeState = async () => {
