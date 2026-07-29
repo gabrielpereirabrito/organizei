@@ -7,3 +7,4 @@ export * from './CurrencyInput';
 export * from './ToastConfig';
 export * from './Checkbox';
 export * from './ThemeToggle';
+export * from './DatePicker';

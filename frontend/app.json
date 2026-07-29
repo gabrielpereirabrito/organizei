@@ -12,7 +12,8 @@
         {
           "faceIDPermission": "Este aplicativo usa o Face ID para um login rápido e seguro"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
