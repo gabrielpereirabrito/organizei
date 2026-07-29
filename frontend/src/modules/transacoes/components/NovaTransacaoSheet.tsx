@@ -1,5 +1,5 @@
-import React, { forwardRef, useCallback, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, Switch, Alert } from 'react-native';
+import React, { forwardRef, useCallback, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,8 +7,7 @@ import * as z from 'zod';
 import { useCriarTransacao } from '../hooks/useTransacoes';
 import { useCategorias } from '@/modules/categorias';
 import { useContas } from '@/modules/contas/hooks/useContas';
-import { CurrencyInput, Button, Input } from '@/shared/components/ui';
-import { formatarMoeda } from '@/shared/utils/currency';
+import { CurrencyInput, Button, Input, DatePicker, Checkbox } from '@/shared/components/ui';
 
 const transacaoSchema = z.object({
   descricao: z.string().min(3, 'Descrição muito curta'),
@@ -16,6 +15,9 @@ const transacaoSchema = z.object({
   tipo: z.enum(['RECEITA', 'DESPESA']),
   categoriaId: z.string().min(1, 'Categoria é obrigatória'),
   contaId: z.string().min(1, 'Conta é obrigatória'),
+  dataVencimento: z.date(),
+  foiPago: z.boolean(),
+  dataPagamento: z.date().optional(),
 });
 
 type FormData = z.infer<typeof transacaoSchema>;
@@ -37,14 +39,24 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       tipo: 'DESPESA',
       categoriaId: '',
       contaId: '',
+      dataVencimento: new Date(),
+      foiPago: true,
+      dataPagamento: new Date(),
     }
   });
 
   const tipoAtual = watch('tipo');
+  const foiPago = watch('foiPago');
+  const dataVencimento = watch('dataVencimento');
 
-  // Filtra categorias pelo tipo
+  // Sincroniza a data de pagamento com a de vencimento se estiver marcado como pago
+  useEffect(() => {
+    if (foiPago) {
+      setValue('dataPagamento', dataVencimento);
+    }
+  }, [dataVencimento, foiPago, setValue]);
+
   const categoriasFiltradas = categorias.filter(c => c.tipo === tipoAtual);
-
   const snapPoints = useMemo(() => ['70%', '90%'], []);
 
   const renderBackdrop = useCallback(
@@ -57,9 +69,14 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
   const onSubmit = async (data: FormData) => {
     try {
       await criarTransacao({
-        ...data,
-        dataVencimento: new Date().toISOString(), // Mocking date today
-        status: 'PAGA', // Default to paid
+        descricao: data.descricao,
+        valor: data.valor,
+        tipo: data.tipo,
+        categoriaId: data.categoriaId,
+        contaId: data.contaId,
+        status: data.foiPago ? 'PAGA' : 'PENDENTE',
+        dataVencimento: data.dataVencimento.toISOString(),
+        dataPagamento: data.foiPago ? data.dataPagamento?.toISOString() : undefined,
       });
       reset();
       // @ts-ignore
@@ -83,7 +100,6 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       <BottomSheetScrollView contentContainerStyle={{ padding: 24 }}>
         <Text className="text-2xl font-bold text-finance-texto mb-6">Nova Transação</Text>
 
-        {/* Tipo Selector */}
         <View className="flex-row gap-4 mb-6">
           <TouchableOpacity 
             className={`flex-1 p-3 rounded-xl border ${tipoAtual === 'RECEITA' ? 'border-finance-verde bg-finance-verde/10' : 'border-slate-200'}`}
@@ -126,6 +142,47 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
           )}
         />
 
+        {/* Datas e Pagamento */}
+        <Controller
+          control={control}
+          name="dataVencimento"
+          render={({ field: { onChange, value } }) => (
+            <DatePicker
+              label="Data de Competência (Vencimento)"
+              value={value}
+              onChange={onChange}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="foiPago"
+          render={({ field: { onChange, value } }) => (
+            <Checkbox
+              checked={value}
+              onChange={onChange}
+              label={tipoAtual === 'DESPESA' ? 'Já foi pago?' : 'Já foi recebido?'}
+              className="mb-4"
+            />
+          )}
+        />
+
+        {foiPago && (
+          <Controller
+            control={control}
+            name="dataPagamento"
+            render={({ field: { onChange, value } }) => (
+              <DatePicker
+                label={tipoAtual === 'DESPESA' ? 'Data do Pagamento' : 'Data do Recebimento'}
+                value={value || new Date()}
+                onChange={onChange}
+              />
+            )}
+          />
+        )}
+
+        {/* Categorias e Contas */}
         <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2 mt-2">Categoria</Text>
         <View className="flex-row flex-wrap gap-2 mb-6">
           {categoriasFiltradas.map(cat => {
@@ -160,7 +217,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
         </View>
         {errors.contaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.contaId.message}</Text>}
 
-        <Button onPress={handleSubmit(onSubmit)} className="mt-4">
+        <Button onPress={handleSubmit(onSubmit)} className="mt-4 mb-10">
           <Text className="text-white font-bold text-lg">Salvar Transação</Text>
         </Button>
       </BottomSheetScrollView>
