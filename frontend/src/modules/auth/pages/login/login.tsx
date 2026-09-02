@@ -68,7 +68,7 @@ export function LoginPage() {
     toastService.info('Entrando...', 'Verificando credenciais');
     try {
       const { data } = await api.post('/auth/login', { email, senha });
-      await setAuth(data.usuario, data.token);
+      await setAuth(data.usuario, data.token, data.refreshToken);
 
       if (rememberMe) {
         await SecureStore.setItemAsync('saved_email', email);
