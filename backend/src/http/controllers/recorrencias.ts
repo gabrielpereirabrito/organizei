@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { checkOwnership } from '@/utils/checkOwnership'
-import { incrementarData } from '@/utils/dateHelpers'
+import { calcularInstanciasRecorrencia } from '@/utils/dateHelpers'
 
 const criarRecorrenciaBodySchema = z.object({
   descricao: z.string().min(1),
@@ -53,7 +53,8 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
   checkOwnership(contaExiste, usuarioId, 'Conta')
   checkOwnership(categoriaExiste, usuarioId, 'Categoria')
 
-  const dataFim = incrementarData(dataInicio, frequencia, duracaoMeses - 1, intervaloValor, intervaloTipo)
+  const dataFim = new Date(dataInicio)
+  dataFim.setMonth(dataFim.getMonth() + duracaoMeses)
 
   const recorrencia = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const molde = await tx.recorrencia.create({
@@ -72,20 +73,19 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
       }
     })
 
-    const transacoesAGerar = []
-    for (let i = 0; i < duracaoMeses; i++) {
-      transacoesAGerar.push({
-        descricao,
-        valor,
-        tipo,
-        status: 'PENDENTE' as const,
-        data: incrementarData(dataInicio, frequencia, i, intervaloValor, intervaloTipo),
-        usuarioId,
-        contaId,
-        categoriaId,
-        recorrenciaId: molde.id,
-      })
-    }
+    const datasAGerar = calcularInstanciasRecorrencia(dataInicio, dataFim, frequencia, intervaloValor, intervaloTipo)
+
+    const transacoesAGerar = datasAGerar.map(data => ({
+      descricao,
+      valor,
+      tipo,
+      status: 'PENDENTE' as const,
+      dataVencimento: data,
+      usuarioId,
+      contaId,
+      categoriaId,
+      recorrenciaId: molde.id,
+    }))
 
     await tx.transacao.createMany({
       data: transacoesAGerar,
@@ -121,14 +121,14 @@ export async function editarRecorrenciaEmLote(request: FastifyRequest, reply: Fa
     
     if (descricao) {
       await tx.transacao.updateMany({
-        where: { recorrenciaId: id, usuarioId, data: { gte: dataCorte } },
+        where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte } },
         data: { descricao }
       })
     }
 
     if (valor) {
       await tx.transacao.updateMany({
-        where: { recorrenciaId: id, usuarioId, data: { gte: dataCorte }, status: 'PENDENTE' },
+        where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte }, status: 'PENDENTE' },
         data: { valor }
       })
     }
@@ -153,7 +153,7 @@ export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: F
     })
 
     const pagas = await tx.transacao.findMany({
-      where: { recorrenciaId: id, usuarioId, data: { gte: dataCorte }, status: 'PAGA' }
+      where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte }, status: 'PAGA' }
     })
 
     for (const transacao of pagas) {
@@ -168,7 +168,7 @@ export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: F
     }
 
     await tx.transacao.deleteMany({
-      where: { recorrenciaId: id, usuarioId, data: { gte: dataCorte } }
+      where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte } }
     })
   })
 

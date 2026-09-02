@@ -7,10 +7,22 @@ import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deleta
 import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote, listarRecorrencias, buscarRecorrenciaPorId } from './controllers/recorrencias'
 import { criarMeta, listarMetas, atualizarMeta, deletarMeta } from './controllers/metas'
 
+// Limite mais estrito que o global (100 req/min) para as rotas de autenticação,
+// que são o alvo natural de força bruta (ADR 0006). Sobrescreve por rota o
+// `fastifyRateLimit` registrado globalmente em `app.ts`.
+const authRateLimit = {
+  config: {
+    rateLimit: {
+      max: 10,
+      timeWindow: '1 minute',
+    },
+  },
+}
+
 export async function appRoutes(app: FastifyInstance) {
   // Rotas Públicas
-  app.post('/auth/cadastro', cadastro)
-  app.post('/auth/login', login)
+  app.post('/auth/cadastro', authRateLimit, cadastro)
+  app.post('/auth/login', authRateLimit, login)
   app.post('/auth/refresh', refresh)
 
   // Rotas Autenticadas (Requerem JWT/Cookie)
@@ -25,6 +37,7 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.put('/contas/:id', atualizarConta)
     authedApp.delete('/contas/:id', deletarConta)
     authedApp.patch('/contas/:id/inativar', inativarConta)
+    authedApp.patch('/contas/:id/ativar', ativarConta)
 
     // Categorias
     authedApp.post('/categorias', criarCategoria)

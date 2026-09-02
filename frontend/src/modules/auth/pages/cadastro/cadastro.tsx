@@ -17,7 +17,7 @@ export function CadastroPage() {
     setIsLoading(true);
     try {
       const { data } = await api.post('/auth/cadastro', { nome, email, senha });
-      await setAuth(data.usuario, data.token);
+      await setAuth(data.usuario, data.token, data.refreshToken);
       router.replace('/(app)');
     } catch (error: any) {
       Alert.alert('Erro', error.response?.data?.message || 'Erro ao realizar cadastro');

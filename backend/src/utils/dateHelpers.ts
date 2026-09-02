@@ -37,3 +37,33 @@ export function incrementarData(
   }
   return novaData
 }
+
+export function calcularInstanciasRecorrencia(
+  dataInicio: Date,
+  dataLimite: Date,
+  frequencia: FrequenciaRecorrencia,
+  intervaloValor?: number | null,
+  intervaloTipo?: TipoIntervalo | null
+): Date[] {
+  const datas: Date[] = []
+  let iteracao = 0
+  
+  while (true) {
+    const dataGerada = incrementarData(dataInicio, frequencia, iteracao, intervaloValor, intervaloTipo)
+    
+    if (dataGerada > dataLimite) {
+      break
+    }
+    
+    datas.push(dataGerada)
+    iteracao++
+
+    // Prevenção contra loops infinitos em caso de parâmetros anômalos
+    if (iteracao > 1000) {
+      console.warn('[dateHelpers] Loop de recorrência interrompido para evitar loop infinito (iteracao > 1000).')
+      break
+    }
+  }
+  
+  return datas
+}

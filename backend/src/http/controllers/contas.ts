@@ -75,8 +75,27 @@ export async function deletarConta(request: FastifyRequest, reply: FastifyReply)
   const { id } = getParamsSchema.parse(request.params)
   const usuarioId = request.user.sub
 
-  const conta = await prisma.conta.findUnique({ where: { id } })
+  const conta = await prisma.conta.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { transacoes: true, transferenciasRecebidas: true, recorrencias: true }
+      }
+    }
+  })
+
   checkOwnership(conta, usuarioId, 'Conta')
+
+  const totalTransacoes = conta._count.transacoes + conta._count.transferenciasRecebidas
+  const totalRecorrencias = conta._count.recorrencias
+
+  if (totalTransacoes > 0 || totalRecorrencias > 0) {
+    return reply.status(409).send({
+      message: `Esta conta possui ${totalTransacoes} transação(ões) e ${totalRecorrencias} recorrência(s) vinculada(s). Por favor, inative-a em vez de excluir fisicamente.`,
+      totalTransacoes,
+      totalRecorrencias,
+    })
+  }
 
   await prisma.conta.delete({
     where: { id },

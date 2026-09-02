@@ -1,5 +1,6 @@
 import cron from 'node-cron'
 import { prisma } from '../lib/prisma'
+import { renovarRecorrencias } from './manutencaoRecorrencias'
 
 export function startCronJobs() {
   // Roda todos os dias à meia-noite (00:00)
@@ -24,6 +25,11 @@ export function startCronJobs() {
     } catch (error) {
       console.error('❌ [Cron] Erro ao verificar transações vencidas:', error)
     }
+  })
+
+  // Roda todos os dias às 02:00 da manhã
+  cron.schedule('0 2 * * *', async () => {
+    await renovarRecorrencias()
   })
   
   console.log('⏰ Cron jobs registrados com sucesso.')
