@@ -37,6 +37,7 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.put('/contas/:id', atualizarConta)
     authedApp.delete('/contas/:id', deletarConta)
     authedApp.patch('/contas/:id/inativar', inativarConta)
+    authedApp.patch('/contas/:id/ativar', ativarConta)
 
     // Categorias
     authedApp.post('/categorias', criarCategoria)
