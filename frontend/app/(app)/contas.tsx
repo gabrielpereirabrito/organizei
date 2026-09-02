@@ -22,10 +22,20 @@ export default function ContasPage() {
   const handleDelete = (id: string) => {
     Alert.alert(
       'Deletar Conta?',
-      'Se você deletar esta conta, TODAS as transações e históricos atrelados a ela serão apagados para sempre. Deseja continuar?',
+      'Esta ação não pode ser desfeita. Contas com transações ou recorrências vinculadas não podem ser excluídas — apenas inativadas, para preservar o histórico financeiro. Deseja continuar?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir Permanentemente', style: 'destructive', onPress: () => deletarConta(id) }
+        {
+          text: 'Excluir Permanentemente',
+          style: 'destructive',
+          onPress: () => deletarConta(id, {
+            onError: (error: any) => {
+              const mensagem = error?.response?.data?.message
+                ?? 'Não foi possível excluir esta conta.';
+              Alert.alert('Não foi possível excluir', mensagem);
+            }
+          })
+        }
       ]
     );
   };
