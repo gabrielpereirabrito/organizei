@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TextInput, View, Text, TextInputProps } from 'react-native';
 import { cn } from '@/shared/utils/cn';
 import { formatarMoeda } from '@/shared/utils/currency';
+import { useThemeColors } from '@/shared/theme/colors';
 
 interface CurrencyInputProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   value?: number; // Em centavos
@@ -12,6 +13,7 @@ interface CurrencyInputProps extends Omit<TextInputProps, 'value' | 'onChangeTex
 
 export function CurrencyInput({ value = 0, onChangeValue, label, error, className, ...props }: CurrencyInputProps) {
   const [displayValue, setDisplayValue] = useState('');
+  const colors = useThemeColors();
 
   useEffect(() => {
     if (value === 0) {
@@ -41,7 +43,7 @@ export function CurrencyInput({ value = 0, onChangeValue, label, error, classNam
         value={displayValue}
         onChangeText={handleChangeText}
         keyboardType="numeric"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={colors.mutado}
         className={cn(
           "w-full h-12 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 text-base text-slate-900 dark:text-slate-100",
           error && "border-finance-vermelho focus:border-finance-vermelho",

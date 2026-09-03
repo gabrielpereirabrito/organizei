@@ -2,13 +2,14 @@ import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps } from 'react-native';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/shared/utils/cn';
+import { useThemeColors } from '@/shared/theme/colors';
 
 const buttonVariants = cva(
   "flex-row items-center justify-center rounded-lg px-4 py-3 active:opacity-80 disabled:opacity-50",
   {
     variants: {
       variant: {
-        primary: "bg-blue-600",
+        primary: "bg-finance-primaria",
         secondary: "bg-slate-200 dark:bg-slate-800",
         danger: "bg-red-500",
         ghost: "bg-transparent",
@@ -34,7 +35,7 @@ const textVariants = cva(
         primary: "text-white",
         secondary: "text-slate-900 dark:text-slate-100",
         danger: "text-white",
-        ghost: "text-blue-600 dark:text-blue-400",
+        ghost: "text-finance-primaria",
       }
     },
     defaultVariants: {
@@ -49,6 +50,8 @@ export interface ButtonProps extends TouchableOpacityProps, VariantProps<typeof 
 }
 
 export function Button({ className, variant, size, isLoading, disabled, children, ...props }: ButtonProps) {
+  const colors = useThemeColors();
+
   return (
     <TouchableOpacity
       className={cn(buttonVariants({ variant, size, className }))}
@@ -56,7 +59,7 @@ export function Button({ className, variant, size, isLoading, disabled, children
       {...props}
     >
       {isLoading ? (
-        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : '#2563eb'} />
+        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? '#fff' : colors.primaria} />
       ) : (
         <Text className={cn(textVariants({ variant }))}>{children}</Text>
       )}

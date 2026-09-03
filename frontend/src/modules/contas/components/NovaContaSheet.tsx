@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCriarConta, TipoConta } from '../hooks/useContas';
 import { CurrencyInput, Button, Input } from '@/shared/components/ui';
+import { useThemeColors } from '@/shared/theme/colors';
 
 const contaSchema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
@@ -19,6 +20,7 @@ export type BottomSheetRef = BottomSheet;
 
 export const NovaContaSheet = forwardRef<BottomSheetRef, {}>((props, ref) => {
   const { mutateAsync: criarConta } = useCriarConta();
+  const colors = useThemeColors();
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(contaSchema),
@@ -66,7 +68,7 @@ export const NovaContaSheet = forwardRef<BottomSheetRef, {}>((props, ref) => {
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: 'var(--finance-fundo)' }}
+      backgroundStyle={{ backgroundColor: colors.fundo }}
     >
       <BottomSheetScrollView contentContainerStyle={{ padding: 24 }}>
         <Text className="text-2xl font-bold text-finance-texto dark:text-white mb-6">Nova Conta</Text>

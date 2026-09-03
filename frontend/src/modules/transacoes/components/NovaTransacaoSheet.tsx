@@ -8,6 +8,7 @@ import { useCriarTransacao } from '../hooks/useTransacoes';
 import { useCategorias } from '@/modules/categorias';
 import { useContas } from '@/modules/contas/hooks/useContas';
 import { CurrencyInput, Button, Input, DatePicker, Checkbox } from '@/shared/components/ui';
+import { useThemeColors } from '@/shared/theme/colors';
 
 const transacaoSchema = z.object({
   descricao: z.string().min(3, 'Descrição muito curta'),
@@ -30,6 +31,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
   const { mutateAsync: criarTransacao } = useCriarTransacao();
   const categorias = categoriasData || [];
   const contas = contasData || [];
+  const colors = useThemeColors();
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(transacaoSchema),
@@ -95,19 +97,19 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: '#F8F9FA' }}
+      backgroundStyle={{ backgroundColor: colors.fundo }}
     >
       <BottomSheetScrollView contentContainerStyle={{ padding: 24 }}>
         <Text className="text-2xl font-bold text-finance-texto mb-6">Nova Transação</Text>
 
         <View className="flex-row gap-4 mb-6">
-          <TouchableOpacity 
+          <TouchableOpacity
             className={`flex-1 p-3 rounded-xl border ${tipoAtual === 'RECEITA' ? 'border-finance-verde bg-finance-verde/10' : 'border-slate-200'}`}
             onPress={() => setValue('tipo', 'RECEITA')}
           >
             <Text className={`text-center font-bold ${tipoAtual === 'RECEITA' ? 'text-finance-verde' : 'text-finance-mutado'}`}>RECEITA</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             className={`flex-1 p-3 rounded-xl border ${tipoAtual === 'DESPESA' ? 'border-finance-vermelho bg-finance-vermelho/10' : 'border-slate-200'}`}
             onPress={() => setValue('tipo', 'DESPESA')}
           >

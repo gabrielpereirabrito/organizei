@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal as RNModal, View, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
 import { cn } from '@/shared/utils/cn';
 import { X } from 'lucide-react-native';
+import { useThemeColors } from '@/shared/theme/colors';
 
 export interface ModalProps {
   visible: boolean;
@@ -11,6 +12,8 @@ export interface ModalProps {
 }
 
 export function Modal({ visible, onClose, title, children }: ModalProps) {
+  const colors = useThemeColors();
+
   return (
     <RNModal
       visible={visible}
@@ -21,7 +24,7 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
       <TouchableWithoutFeedback onPress={onClose}>
         <View className="flex-1 justify-center items-center bg-black/50 p-4">
           <TouchableWithoutFeedback>
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               className="w-full max-w-lg"
             >
@@ -31,7 +34,7 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
                     {title}
                   </Text>
                   <TouchableOpacity onPress={onClose} className="p-1 rounded-full bg-slate-100 dark:bg-slate-800">
-                    <X size={20} color="#64748b" />
+                    <X size={20} color={colors.mutado} />
                   </TouchableOpacity>
                 </View>
                 <View className="p-5">
