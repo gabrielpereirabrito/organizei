@@ -1,56 +1,47 @@
-import React, { useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
 import { useContas, useDeletarConta, IConta } from '@/modules/contas/hooks/useContas';
 import { NovaContaSheet, BottomSheetRef } from '@/modules/contas/components/NovaContaSheet';
 import { ContaCard } from '@/modules/contas/components/ContaCard';
-import { Button } from '@/shared/components/ui';
-import { Plus, Eye, EyeOff, Moon, Sun } from 'lucide-react-native';
+import { Button, ThemeToggle, IconButton, Skeleton, EmptyState, ConfirmDialog } from '@/shared/components/ui';
+import { Plus, Eye, EyeOff, Wallet } from 'lucide-react-native';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
-import { useThemeStore } from '@/shared/stores/theme.store';
+import { toastService } from '@/shared/services/toast.service';
 import { MotiView } from 'moti';
 
 export default function ContasPage() {
   const { data, isLoading, isError } = useContas();
-  const { mutate: deletarConta } = useDeletarConta();
+  const { mutate: deletarConta, isPending: isDeletando } = useDeletarConta();
   const bottomSheetRef = useRef<BottomSheetRef>(null);
-  
+  const [contaParaExcluir, setContaParaExcluir] = useState<string | null>(null);
+
   const { isOculto, togglePrivacy } = usePrivacyStore();
-  const { theme, setTheme } = useThemeStore();
 
   const handleOpenSheet = () => bottomSheetRef.current?.expand();
 
-  const handleDelete = (id: string) => {
-    Alert.alert(
-      'Deletar Conta?',
-      'Esta ação não pode ser desfeita. Contas com transações ou recorrências vinculadas não podem ser excluídas — apenas inativadas, para preservar o histórico financeiro. Deseja continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir Permanentemente',
-          style: 'destructive',
-          onPress: () => deletarConta(id, {
-            onError: (error: any) => {
-              const mensagem = error?.response?.data?.message
-                ?? 'Não foi possível excluir esta conta.';
-              Alert.alert('Não foi possível excluir', mensagem);
-            }
-          })
-        }
-      ]
-    );
+  const handleConfirmDelete = () => {
+    if (!contaParaExcluir) return;
+    deletarConta(contaParaExcluir, {
+      onSuccess: () => setContaParaExcluir(null),
+      onError: (error: any) => {
+        setContaParaExcluir(null);
+        const mensagem = error?.response?.data?.message ?? 'Não foi possível excluir esta conta.';
+        toastService.error('Não foi possível excluir', mensagem);
+      },
+    });
   };
 
   const handleEdit = (conta: IConta) => {
-    Alert.alert('Em breve', 'A edição de contas será implementada em breve.');
+    toastService.info('Em breve', 'A edição de contas será implementada em breve.');
   };
 
   const renderItem = ({ item, index }: { item: IConta, index: number }) => (
     <MotiView
-      from={{ opacity: 0, translateY: 20 }}
+      from={{ opacity: 0, translateY: 12 }}
       animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 400, delay: index * 100 }}
+      transition={{ type: 'timing', duration: 220, delay: Math.min(index, 8) * 40 }}
     >
-      <ContaCard conta={item} onDelete={handleDelete} onEdit={handleEdit} />
+      <ContaCard conta={item} onDelete={setContaParaExcluir} onEdit={handleEdit} />
     </MotiView>
   );
 
@@ -59,12 +50,8 @@ export default function ContasPage() {
       <View className="flex-row justify-between items-center mb-6 mt-4">
         <View className="flex-row items-center gap-3">
           <Text className="text-3xl font-bold text-finance-texto dark:text-white">Contas</Text>
-          <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            {theme === 'dark' ? <Moon size={20} color="#71717A" /> : <Sun size={20} color="#71717A" />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={togglePrivacy} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            {isOculto ? <EyeOff size={20} color="#71717A" /> : <Eye size={20} color="#71717A" />}
-          </TouchableOpacity>
+          <ThemeToggle style={{ marginBottom: 0 }} />
+          <IconButton icon={isOculto ? EyeOff : Eye} onPress={togglePrivacy} />
         </View>
         <Button size="sm" onPress={handleOpenSheet}>
           <Plus size={20} color="#fff" />
@@ -73,9 +60,13 @@ export default function ContasPage() {
       </View>
 
       {isLoading ? (
-        <Text className="text-center text-slate-500 mt-10">Carregando contas...</Text>
+        <View>
+          <Skeleton className="h-28 rounded-2xl mb-3" />
+          <Skeleton className="h-28 rounded-2xl mb-3" />
+          <Skeleton className="h-28 rounded-2xl mb-3" />
+        </View>
       ) : isError ? (
-        <Text className="text-center text-finance-vermelho mt-10">Erro ao carregar as contas.</Text>
+        <EmptyState title="Erro ao carregar as contas" />
       ) : (
         <FlatList
           data={data}
@@ -84,12 +75,23 @@ export default function ContasPage() {
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text className="text-center text-slate-500 mt-10">Você ainda não possui contas cadastradas.</Text>
+            <EmptyState icon={Wallet} title="Você ainda não possui contas cadastradas" description="Crie sua primeira conta para começar a organizar suas finanças." />
           }
         />
       )}
 
       <NovaContaSheet ref={bottomSheetRef} />
+
+      <ConfirmDialog
+        visible={!!contaParaExcluir}
+        onClose={() => setContaParaExcluir(null)}
+        onConfirm={handleConfirmDelete}
+        title="Deletar Conta?"
+        description="Esta ação não pode ser desfeita. Contas com transações ou recorrências vinculadas não podem ser excluídas — apenas inativadas, para preservar o histórico financeiro."
+        confirmLabel="Excluir Permanentemente"
+        destructive
+        isLoading={isDeletando}
+      />
     </View>
   );
 }

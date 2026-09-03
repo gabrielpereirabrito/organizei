@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { Platform, Appearance } from 'react-native';
-import { colorScheme } from 'nativewind';
+import { Platform } from 'react-native';
 
 type ThemeType = 'light' | 'dark' | 'system';
 
@@ -19,14 +18,8 @@ export const useThemeStore = create<ThemeState>((set) => ({
     } else {
       localStorage.setItem('theme_preference', newTheme);
     }
-    applyTheme(newTheme);
   },
 }));
-
-export const applyTheme = (theme: ThemeType) => {
-  // A aplicação do NativeWind agora é feita no _layout.tsx via useColorScheme
-  // Isso garante que o contexto do React NativeWind seja atualizado de forma reativa.
-};
 
 export const loadThemeState = async () => {
   let savedTheme: ThemeType = 'system';
@@ -46,5 +39,4 @@ export const loadThemeState = async () => {
     console.error('Failed to load theme state', error);
   }
   useThemeStore.setState({ theme: savedTheme });
-  applyTheme(savedTheme);
 };

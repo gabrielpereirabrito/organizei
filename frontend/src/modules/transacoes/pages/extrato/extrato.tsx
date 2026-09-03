@@ -1,19 +1,18 @@
-import React, { useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
 import { useTransacoes, useDeletarTransacao, ITransacao } from '../../hooks/useTransacoes';
 import { NovaTransacaoSheet, BottomSheetRef } from '../../components/NovaTransacaoSheet';
-import { Card, Button } from '@/shared/components/ui';
+import { Card, Button, ThemeToggle, IconButton, Skeleton, EmptyState, ConfirmDialog } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
-import { Plus, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react-native';
+import { Plus, Trash2, Eye, EyeOff, ChevronLeft, ChevronRight, Receipt } from 'lucide-react-native';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
-import { useThemeStore } from '@/shared/stores/theme.store';
 import { MotiView } from 'moti';
-import { useState } from 'react';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 export function TransacoesPage() {
   const [dataFiltro, setDataFiltro] = useState(() => new Date());
-  
+  const [transacaoParaExcluir, setTransacaoParaExcluir] = useState<string | null>(null);
+
   const getFiltros = () => {
     const start = new Date(dataFiltro.getFullYear(), dataFiltro.getMonth(), 1);
     const end = new Date(dataFiltro.getFullYear(), dataFiltro.getMonth() + 1, 0, 23, 59, 59);
@@ -21,11 +20,10 @@ export function TransacoesPage() {
   };
 
   const { data, isLoading, isError } = useTransacoes(getFiltros());
-  const { mutate: deletar } = useDeletarTransacao();
+  const { mutate: deletar, isPending: isDeletando } = useDeletarTransacao();
   const formatarMoeda = useFormatarMoeda();
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const { isOculto, togglePrivacy } = usePrivacyStore();
-  const { theme, setTheme } = useThemeStore();
 
   const handlePrevMonth = () => {
     setDataFiltro(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -37,46 +35,48 @@ export function TransacoesPage() {
 
   const handleOpenSheet = () => bottomSheetRef.current?.expand();
 
-  function handleDelete(id: string) {
-    Alert.alert('Atenção', 'Deseja realmente deletar esta transação?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Deletar', style: 'destructive', onPress: () => deletar(id) }
-    ]);
-  }
+  const handleConfirmDelete = () => {
+    if (!transacaoParaExcluir) return;
+    deletar(transacaoParaExcluir, { onSettled: () => setTransacaoParaExcluir(null) });
+  };
 
   const renderItem = ({ item, index }: { item: ITransacao, index: number }) => {
     const isReceita = item.tipo === 'RECEITA';
-    
+
     return (
       <MotiView
-        from={{ opacity: 0, translateY: 20 }}
+        from={{ opacity: 0, translateY: 12 }}
         animate={{ opacity: 1, translateY: 0 }}
-        transition={{ type: 'timing', duration: 400, delay: index * 100 }}
+        transition={{ type: 'timing', duration: 220, delay: Math.min(index, 8) * 40 }}
       >
         <Card className="mb-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <View className="flex-1">
-            <Text className="text-lg font-semibold text-finance-texto dark:text-white">{item.descricao}</Text>
-            {item.categoria && (
-              <View className="flex-row items-center gap-1 mt-1">
-                <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.categoria.cor }} />
-                <Text className="text-sm text-finance-mutado">{item.categoria.nome}</Text>
-              </View>
-            )}
+          <View className="flex-row justify-between items-center mb-2">
+            <View className="flex-1">
+              <Text className="text-lg font-semibold text-finance-texto dark:text-white">{item.descricao}</Text>
+              {item.categoria && (
+                <View className="flex-row items-center gap-1 mt-1">
+                  <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.categoria.cor }} />
+                  <Text className="text-sm text-finance-mutado">{item.categoria.nome}</Text>
+                </View>
+              )}
+            </View>
+            <Text className={`text-lg font-bold ${isReceita ? 'text-finance-verde' : 'text-finance-vermelho'}`}>
+              {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
+            </Text>
           </View>
-          <Text className={`text-lg font-bold ${isReceita ? 'text-finance-verde' : 'text-finance-vermelho'}`}>
-            {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
-          </Text>
-        </View>
-        <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-          <Text className="text-sm text-finance-mutado">
-            {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
-          </Text>
-          <TouchableOpacity onPress={() => handleDelete(item.id)}>
-            <Trash2 size={18} color="#FF4C4C" />
-          </TouchableOpacity>
-        </View>
-      </Card>
+          <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+            <Text className="text-sm text-finance-mutado">
+              {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
+            </Text>
+            <IconButton
+              icon={Trash2}
+              shape="square"
+              variant="danger"
+              size="sm"
+              onPress={() => setTransacaoParaExcluir(item.id)}
+            />
+          </View>
+        </Card>
       </MotiView>
     );
   };
@@ -86,12 +86,8 @@ export function TransacoesPage() {
       <View className="flex-row justify-between items-center mb-6">
         <View className="flex-row items-center gap-3">
           <Text className="text-3xl font-bold text-finance-texto dark:text-white">Extrato</Text>
-          <TouchableOpacity onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            {theme === 'dark' ? <Moon size={20} color="#71717A" /> : <Sun size={20} color="#71717A" />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={togglePrivacy} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-            {isOculto ? <EyeOff size={20} color="#71717A" /> : <Eye size={20} color="#71717A" />}
-          </TouchableOpacity>
+          <ThemeToggle style={{ marginBottom: 0 }} />
+          <IconButton icon={isOculto ? EyeOff : Eye} onPress={togglePrivacy} />
         </View>
         <Button size="sm" onPress={handleOpenSheet}>
           <Plus size={20} color="#fff" />
@@ -100,21 +96,21 @@ export function TransacoesPage() {
       </View>
 
       <View className="flex-row justify-between items-center bg-white dark:bg-slate-800 rounded-2xl p-2 mb-6 shadow-sm border border-slate-100 dark:border-slate-700">
-        <TouchableOpacity onPress={handlePrevMonth} className="p-2">
-          <ChevronLeft size={24} color="#71717A" />
-        </TouchableOpacity>
+        <IconButton icon={ChevronLeft} variant="ghost" onPress={handlePrevMonth} />
         <Text className="text-lg font-bold text-finance-texto dark:text-white capitalize">
           {MESES[dataFiltro.getMonth()]} {dataFiltro.getFullYear()}
         </Text>
-        <TouchableOpacity onPress={handleNextMonth} className="p-2">
-          <ChevronRight size={24} color="#71717A" />
-        </TouchableOpacity>
+        <IconButton icon={ChevronRight} variant="ghost" onPress={handleNextMonth} />
       </View>
 
       {isLoading ? (
-        <Text className="text-center text-slate-500 mt-10">Carregando transações...</Text>
+        <View>
+          <Skeleton className="h-24 rounded-2xl mb-3" />
+          <Skeleton className="h-24 rounded-2xl mb-3" />
+          <Skeleton className="h-24 rounded-2xl mb-3" />
+        </View>
       ) : isError ? (
-        <Text className="text-center text-red-500 mt-10">Erro ao carregar transações.</Text>
+        <EmptyState title="Erro ao carregar transações" />
       ) : (
         <FlatList
           data={data?.data}
@@ -123,12 +119,23 @@ export function TransacoesPage() {
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text className="text-center text-slate-500 mt-10">Nenhuma transação encontrada.</Text>
+            <EmptyState icon={Receipt} title="Nenhuma transação encontrada" description="Adicione sua primeira transação para começar." />
           }
         />
       )}
 
       <NovaTransacaoSheet ref={bottomSheetRef} />
+
+      <ConfirmDialog
+        visible={!!transacaoParaExcluir}
+        onClose={() => setTransacaoParaExcluir(null)}
+        onConfirm={handleConfirmDelete}
+        title="Deletar Transação"
+        description="Deseja realmente deletar esta transação? Essa ação não pode ser desfeita."
+        confirmLabel="Deletar"
+        destructive
+        isLoading={isDeletando}
+      />
     </View>
   );
 }

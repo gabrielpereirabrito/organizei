@@ -1,14 +1,17 @@
 import React from 'react';
 import { Platform, View, Text, TouchableOpacity } from 'react-native';
 import { Tabs, Slot, useRouter } from 'expo-router';
+import { useThemeColors } from '@/shared/theme/colors';
 
 export function AppHybridLayout() {
+  const colors = useThemeColors();
+
   if (Platform.OS === 'web') {
     return <WebSidebarLayout />;
   }
 
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: '#2563eb' }}>
+    <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.primaria }}>
       <Tabs.Screen name="index" options={{ title: 'Overview' }} />
       <Tabs.Screen name="transacoes" options={{ title: 'Extrato' }} />
       <Tabs.Screen name="contas" options={{ title: 'Contas' }} />

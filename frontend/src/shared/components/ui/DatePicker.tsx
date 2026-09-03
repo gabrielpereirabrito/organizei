@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Platform, TouchableOpacity } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Calendar } from 'lucide-react-native';
+import { useThemeColors } from '@/shared/theme/colors';
 
 interface DatePickerProps {
   label: string;
@@ -12,6 +13,7 @@ interface DatePickerProps {
 
 export function DatePicker({ label, value, onChange, error }: DatePickerProps) {
   const [show, setShow] = useState(false);
+  const colors = useThemeColors();
 
   const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     setShow(Platform.OS === 'ios'); // No iOS o picker não fecha sozinho
@@ -61,7 +63,7 @@ export function DatePicker({ label, value, onChange, error }: DatePickerProps) {
         className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-4 bg-transparent flex-row justify-between items-center"
       >
         <Text className="text-finance-texto dark:text-white">{formatDate(value)}</Text>
-        <Calendar size={20} color="#94a3b8" />
+        <Calendar size={20} color={colors.mutado} />
       </TouchableOpacity>
 
       {show && (

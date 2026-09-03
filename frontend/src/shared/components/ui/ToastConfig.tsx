@@ -1,41 +1,51 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { ToastConfig, ToastProps } from 'react-native-toast-message';
-import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react-native';
+import Toast, { ToastConfig, ToastConfigParams } from 'react-native-toast-message';
+import { CheckCircle2, XCircle, AlertCircle, type LucideIcon } from 'lucide-react-native';
+import { MotiView } from 'moti';
+import { useThemeColors } from '@/shared/theme/colors';
 
-const BaseToast = ({ text1, text2, icon: Icon, colorClass, bgClass, borderClass }: any) => (
-  <View className={`flex-row items-center w-[90%] p-4 rounded-2xl border-l-4 shadow-sm ${bgClass} ${borderClass} mb-4`}>
-    <Icon size={24} className={colorClass} />
+interface BaseToastProps extends ToastConfigParams<any> {
+  icon: LucideIcon;
+  iconColor: string;
+  borderClass: string;
+}
+
+const BaseToast = ({ text1, text2, icon: Icon, iconColor, borderClass }: BaseToastProps) => (
+  <MotiView
+    from={{ opacity: 0, translateY: -20, scale: 0.9 }}
+    animate={{ opacity: 1, translateY: 0, scale: 1 }}
+    transition={{ type: 'timing', duration: 250 }}
+    className={`flex-row items-center w-[90%] p-4 rounded-2xl border-l-4 bg-white dark:bg-slate-800 shadow-lg ${borderClass} mb-4`}
+  >
+    <Icon size={24} color={iconColor} />
     <View className="ml-3 flex-1">
       {text1 && <Text className="text-finance-texto dark:text-white font-bold text-base">{text1}</Text>}
       {text2 && <Text className="text-finance-mutado dark:text-slate-300 text-sm mt-1">{text2}</Text>}
     </View>
-  </View>
+  </MotiView>
 );
 
-export const toastConfig: ToastConfig = {
-  success: (props: ToastProps) => (
-    <BaseToast
-      {...props}
-      icon={(p: any) => <CheckCircle2 {...p} color="#00B074" />}
-      bgClass="bg-white dark:bg-slate-800"
-      borderClass="border-finance-verde"
-    />
-  ),
-  error: (props: ToastProps) => (
-    <BaseToast
-      {...props}
-      icon={(p: any) => <XCircle {...p} color="#FF4C4C" />}
-      bgClass="bg-white dark:bg-slate-800"
-      borderClass="border-finance-vermelho"
-    />
-  ),
-  info: (props: ToastProps) => (
-    <BaseToast
-      {...props}
-      icon={(p: any) => <AlertCircle {...p} color="#3b82f6" />}
-      bgClass="bg-white dark:bg-slate-800"
-      borderClass="border-blue-500"
-    />
-  ),
-};
+function useToastConfig(): ToastConfig {
+  const colors = useThemeColors();
+
+  return {
+    success: (props: ToastConfigParams<any>) => (
+      <BaseToast {...props} icon={CheckCircle2} iconColor={colors.verde} borderClass="border-finance-verde" />
+    ),
+    error: (props: ToastConfigParams<any>) => (
+      <BaseToast {...props} icon={XCircle} iconColor={colors.vermelho} borderClass="border-finance-vermelho" />
+    ),
+    info: (props: ToastConfigParams<any>) => (
+      <BaseToast {...props} icon={AlertCircle} iconColor={colors.info} borderClass="border-finance-info" />
+    ),
+  };
+}
+
+// react-native-toast-message consome um objeto estático de render props, não um hook.
+// `ToastHost` existe só pra poder chamar `useThemeColors()` (reativo ao tema) e
+// repassar as cores resolvidas para o `config` do <Toast />.
+export function ToastHost() {
+  const config = useToastConfig();
+  return <Toast config={config} position="top" topOffset={60} />;
+}

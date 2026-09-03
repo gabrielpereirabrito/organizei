@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text } from 'react-native';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +7,9 @@ import * as z from 'zod';
 import { useCriarTransacao } from '../hooks/useTransacoes';
 import { useCategorias } from '@/modules/categorias';
 import { useContas } from '@/modules/contas/hooks/useContas';
-import { CurrencyInput, Button, Input, DatePicker, Checkbox } from '@/shared/components/ui';
+import { CurrencyInput, Button, Input, DatePicker, Checkbox, ChoiceChip, ChoiceChipGroup } from '@/shared/components/ui';
+import { useThemeColors } from '@/shared/theme/colors';
+import { toastService } from '@/shared/services/toast.service';
 
 const transacaoSchema = z.object({
   descricao: z.string().min(3, 'Descrição muito curta'),
@@ -30,6 +32,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
   const { mutateAsync: criarTransacao } = useCriarTransacao();
   const categorias = categoriasData || [];
   const contas = contasData || [];
+  const colors = useThemeColors();
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(transacaoSchema),
@@ -84,7 +87,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
         ref.current.close();
       }
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível salvar a transação.');
+      toastService.error('Erro', 'Não foi possível salvar a transação.');
     }
   };
 
@@ -95,24 +98,26 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: '#F8F9FA' }}
+      backgroundStyle={{ backgroundColor: colors.fundo }}
     >
       <BottomSheetScrollView contentContainerStyle={{ padding: 24 }}>
         <Text className="text-2xl font-bold text-finance-texto mb-6">Nova Transação</Text>
 
         <View className="flex-row gap-4 mb-6">
-          <TouchableOpacity 
-            className={`flex-1 p-3 rounded-xl border ${tipoAtual === 'RECEITA' ? 'border-finance-verde bg-finance-verde/10' : 'border-slate-200'}`}
+          <ChoiceChip
+            label="RECEITA"
+            variant="success"
+            selected={tipoAtual === 'RECEITA'}
             onPress={() => setValue('tipo', 'RECEITA')}
-          >
-            <Text className={`text-center font-bold ${tipoAtual === 'RECEITA' ? 'text-finance-verde' : 'text-finance-mutado'}`}>RECEITA</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            className={`flex-1 p-3 rounded-xl border ${tipoAtual === 'DESPESA' ? 'border-finance-vermelho bg-finance-vermelho/10' : 'border-slate-200'}`}
+            className="flex-1 py-3 items-center"
+          />
+          <ChoiceChip
+            label="DESPESA"
+            variant="danger"
+            selected={tipoAtual === 'DESPESA'}
             onPress={() => setValue('tipo', 'DESPESA')}
-          >
-            <Text className={`text-center font-bold ${tipoAtual === 'DESPESA' ? 'text-finance-vermelho' : 'text-finance-mutado'}`}>DESPESA</Text>
-          </TouchableOpacity>
+            className="flex-1 py-3 items-center"
+          />
         </View>
 
         <Controller
@@ -184,37 +189,30 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
 
         {/* Categorias e Contas */}
         <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2 mt-2">Categoria</Text>
-        <View className="flex-row flex-wrap gap-2 mb-6">
-          {categoriasFiltradas.map(cat => {
-            const isSelected = watch('categoriaId') === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setValue('categoriaId', cat.id)}
-                className={`px-4 py-2 rounded-full border ${isSelected ? 'border-finance-texto bg-finance-texto dark:bg-slate-700 dark:border-slate-500' : 'border-slate-300 dark:border-slate-600'}`}
-              >
-                <Text className={isSelected ? 'text-white' : 'text-finance-mutado dark:text-slate-300'}>{cat.nome}</Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <ChoiceChipGroup className="mb-6">
+          {categoriasFiltradas.map(cat => (
+            <ChoiceChip
+              key={cat.id}
+              label={cat.nome}
+              selected={watch('categoriaId') === cat.id}
+              onPress={() => setValue('categoriaId', cat.id)}
+            />
+          ))}
+        </ChoiceChipGroup>
         {errors.categoriaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.categoriaId.message}</Text>}
 
         <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2">Conta</Text>
-        <View className="flex-row flex-wrap gap-2 mb-6">
-          {contas.map(conta => {
-            const isSelected = watch('contaId') === conta.id;
-            return (
-              <TouchableOpacity
-                key={conta.id}
-                onPress={() => setValue('contaId', conta.id)}
-                className={`px-4 py-2 rounded-full border ${isSelected ? 'border-finance-verde bg-finance-verde/10' : 'border-slate-300 dark:border-slate-600'}`}
-              >
-                <Text className={isSelected ? 'text-finance-verde font-bold' : 'text-finance-mutado dark:text-slate-300'}>{conta.nome}</Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
+        <ChoiceChipGroup className="mb-6">
+          {contas.map(conta => (
+            <ChoiceChip
+              key={conta.id}
+              label={conta.nome}
+              variant="success"
+              selected={watch('contaId') === conta.id}
+              onPress={() => setValue('contaId', conta.id)}
+            />
+          ))}
+        </ChoiceChipGroup>
         {errors.contaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.contaId.message}</Text>}
 
         <Button onPress={handleSubmit(onSubmit)} className="mt-4 mb-10">

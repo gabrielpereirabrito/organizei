@@ -4,18 +4,22 @@
 
 @layer base {
   :root {
+    --finance-primaria: #2563eb;
     --finance-verde: #00B074;
     --finance-vermelho: #FF4C4C;
     --finance-alerta: #FFB020;
+    --finance-info: #3b82f6;
     --finance-fundo: #F8F9FA;
     --finance-card: #FFFFFF;
     --finance-texto: #1A1A1A;
     --finance-mutado: #71717A;
   }
   .dark {
+    --finance-primaria: #3b82f6;
     --finance-verde: #00B074;
     --finance-vermelho: #FF4C4C;
     --finance-alerta: #FFB020;
+    --finance-info: #60a5fa;
     --finance-fundo: #0f172a;
     --finance-card: #1e293b;
     --finance-texto: #f8fafc;

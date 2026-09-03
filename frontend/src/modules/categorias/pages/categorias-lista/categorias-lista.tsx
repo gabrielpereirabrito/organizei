@@ -1,47 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
+import { MotiView } from 'moti';
 import { useCategorias, useDeletarCategoria, ICategoria } from '../../hooks/useCategorias';
-import { Button, Card, Modal, Input } from '@/shared/components/ui';
-import { Plus, Trash2, Edit2 } from 'lucide-react-native';
+import { Button, Card, Modal, Input, IconButton, EmptyState, Skeleton, ConfirmDialog } from '@/shared/components/ui';
+import { Plus, Trash2, Edit2, Tag } from 'lucide-react-native';
 import { useCriarCategoria } from '../../hooks/useCategorias';
+import { toastService } from '@/shared/services/toast.service';
 
 export function CategoriasPage() {
   const { data: categorias, isLoading, isError } = useCategorias();
-  const { mutate: deletar } = useDeletarCategoria();
-  
+  const { mutate: deletar, isPending: isDeletando } = useDeletarCategoria();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<string | null>(null);
 
-  function handleDelete(id: string) {
-    Alert.alert('Atenção', 'Deseja realmente deletar esta categoria?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Deletar', style: 'destructive', onPress: () => deletar(id) }
-    ]);
-  }
+  const handleConfirmDelete = () => {
+    if (!categoriaParaExcluir) return;
+    deletar(categoriaParaExcluir, { onSettled: () => setCategoriaParaExcluir(null) });
+  };
 
-  const renderItem = ({ item }: { item: ICategoria }) => (
-    <Card className="mb-3 flex-row justify-between items-center">
-      <View className="flex-row items-center gap-3">
-        <View className="w-4 h-4 rounded-full" style={{ backgroundColor: item.cor }} />
-        <View>
-          <Text className="text-lg font-semibold text-slate-800 dark:text-white">{item.nome}</Text>
-          <Text className={item.tipo === 'RECEITA' ? 'text-green-600' : 'text-red-500'}>
-            {item.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
-          </Text>
+  const renderItem = ({ item, index }: { item: ICategoria; index: number }) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 12 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 220, delay: Math.min(index, 8) * 40 }}
+    >
+      <Card className="mb-3 flex-row justify-between items-center">
+        <View className="flex-row items-center gap-3">
+          <View className="w-4 h-4 rounded-full" style={{ backgroundColor: item.cor }} />
+          <View>
+            <Text className="text-lg font-semibold text-slate-800 dark:text-white">{item.nome}</Text>
+            <Text className={item.tipo === 'RECEITA' ? 'text-finance-verde' : 'text-finance-vermelho'}>
+              {item.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
+            </Text>
+          </View>
         </View>
-      </View>
-      
-      <View className="flex-row gap-2">
-        <TouchableOpacity className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-          <Edit2 size={18} color="#64748b" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg"
-          onPress={() => handleDelete(item.id)}
-        >
-          <Trash2 size={18} color="#ef4444" />
-        </TouchableOpacity>
-      </View>
-    </Card>
+
+        <View className="flex-row gap-2">
+          <IconButton icon={Edit2} shape="square" size="sm" />
+          <IconButton icon={Trash2} shape="square" variant="danger" size="sm" onPress={() => setCategoriaParaExcluir(item.id)} />
+        </View>
+      </Card>
+    </MotiView>
   );
 
   return (
@@ -55,9 +55,13 @@ export function CategoriasPage() {
       </View>
 
       {isLoading ? (
-        <Text className="text-center text-slate-500 mt-10">Carregando categorias...</Text>
+        <View>
+          <Skeleton className="h-16 rounded-2xl mb-3" />
+          <Skeleton className="h-16 rounded-2xl mb-3" />
+          <Skeleton className="h-16 rounded-2xl mb-3" />
+        </View>
       ) : isError ? (
-        <Text className="text-center text-red-500 mt-10">Erro ao carregar categorias.</Text>
+        <EmptyState title="Erro ao carregar categorias" />
       ) : (
         <FlatList
           data={categorias}
@@ -66,19 +70,30 @@ export function CategoriasPage() {
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <Text className="text-center text-slate-500 mt-10">Nenhuma categoria cadastrada.</Text>
+            <EmptyState icon={Tag} title="Nenhuma categoria cadastrada" description="Crie categorias para organizar suas transações." />
           }
         />
       )}
 
       {/* Modal de Criação Básico (placeholder lógico) */}
-      <Modal 
-        visible={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <Modal
+        visible={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title="Nova Categoria"
       >
         <NovaCategoriaForm onClose={() => setIsModalOpen(false)} />
       </Modal>
+
+      <ConfirmDialog
+        visible={!!categoriaParaExcluir}
+        onClose={() => setCategoriaParaExcluir(null)}
+        onConfirm={handleConfirmDelete}
+        title="Deletar Categoria"
+        description="Deseja realmente deletar esta categoria? Essa ação não pode ser desfeita."
+        confirmLabel="Deletar"
+        destructive
+        isLoading={isDeletando}
+      />
     </View>
   );
 }
@@ -90,27 +105,27 @@ function NovaCategoriaForm({ onClose }: { onClose: () => void }) {
   const { mutate: criar, isPending } = useCriarCategoria();
 
   function handleSubmit() {
-    if (!nome) return Alert.alert('Erro', 'Preencha o nome');
+    if (!nome) return toastService.error('Campo obrigatório', 'Preencha o nome da categoria.');
     criar({ nome, cor, tipo }, {
       onSuccess: () => onClose(),
-      onError: (err: any) => Alert.alert('Erro', err.response?.data?.message || 'Erro ao criar')
+      onError: (err: any) => toastService.error('Erro ao criar categoria', err.response?.data?.message || 'Tente novamente.')
     });
   }
 
   return (
     <View className="gap-4">
       <Input label="Nome" value={nome} onChangeText={setNome} placeholder="Ex: Alimentação" />
-      
+
       <View className="flex-row gap-4">
-        <Button 
-          variant={tipo === 'RECEITA' ? 'primary' : 'secondary'} 
+        <Button
+          variant={tipo === 'RECEITA' ? 'primary' : 'secondary'}
           className="flex-1"
           onPress={() => setTipo('RECEITA')}
         >
           Receita
         </Button>
-        <Button 
-          variant={tipo === 'DESPESA' ? 'danger' : 'secondary'} 
+        <Button
+          variant={tipo === 'DESPESA' ? 'danger' : 'secondary'}
           className="flex-1"
           onPress={() => setTipo('DESPESA')}
         >

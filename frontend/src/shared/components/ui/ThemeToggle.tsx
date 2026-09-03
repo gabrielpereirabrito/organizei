@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, ViewStyle } from 'react-native';
 import { Moon, Sun } from 'lucide-react-native';
 import { useThemeStore } from '@/shared/stores/theme.store';
+import { useColorScheme } from 'nativewind';
 import { MotiView, AnimatePresence } from 'moti';
 
 interface ThemeToggleProps {
@@ -9,11 +10,11 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ style }: ThemeToggleProps) {
-  const { theme, setTheme } = useThemeStore();
-  
-  const resolvedTheme = theme === 'system' ? 'light' : theme; 
-  // O Moti fará um swap suave do ícone
-  const isDark = resolvedTheme === 'dark';
+  const { setTheme } = useThemeStore();
+  const { colorScheme } = useColorScheme();
+
+  // colorScheme já reflete o tema real (resolve 'system' via Appearance em _layout.tsx)
+  const isDark = colorScheme === 'dark';
 
   const toggle = () => {
     setTheme(isDark ? 'light' : 'dark');
