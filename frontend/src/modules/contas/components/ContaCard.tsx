@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Card, StatusBadge } from '@/shared/components/ui';
+import { View, Text } from 'react-native';
+import { Card, StatusBadge, IconButton } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
 import { IConta } from '../hooks/useContas';
 import { Trash2, Edit2, Wallet, PiggyBank, Landmark, TrendingUp } from 'lucide-react-native';
@@ -39,19 +39,15 @@ export function ContaCard({ conta, onEdit, onDelete }: ContaCardProps) {
           </View>
           <View>
             <Text className="text-lg font-semibold text-finance-texto dark:text-white">{conta.nome}</Text>
-            <StatusBadge status={label} variant="neutral" />
+            <StatusBadge label={label} variant="neutral" />
           </View>
         </View>
         <View className="flex-row gap-2">
           {onEdit && (
-            <TouchableOpacity onPress={() => onEdit(conta)} className="p-2">
-              <Edit2 size={18} color="#71717A" />
-            </TouchableOpacity>
+            <IconButton icon={Edit2} shape="square" variant="ghost" size="sm" onPress={() => onEdit(conta)} />
           )}
           {onDelete && (
-            <TouchableOpacity onPress={() => onDelete(conta.id)} className="p-2">
-              <Trash2 size={18} color="#FF4C4C" />
-            </TouchableOpacity>
+            <IconButton icon={Trash2} shape="square" variant="danger" size="sm" onPress={() => onDelete(conta.id)} />
           )}
         </View>
       </View>
