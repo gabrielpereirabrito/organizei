@@ -7,9 +7,11 @@ module.exports = {
     extend: {
       colors: {
         finance: {
+          primaria: 'var(--finance-primaria)',
           verde: 'var(--finance-verde)',
           vermelho: 'var(--finance-vermelho)',
           alerta: 'var(--finance-alerta)',
+          info: 'var(--finance-info)',
           fundo: 'var(--finance-fundo)',
           card: 'var(--finance-card)',
           texto: 'var(--finance-texto)',

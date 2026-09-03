@@ -33,6 +33,15 @@ export default function RootLayout() {
     setColorScheme(resolvedTheme);
   }, [theme, setColorScheme]);
 
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme: osScheme }) => {
+      if (theme === 'system') {
+        setColorScheme(osScheme === 'dark' ? 'dark' : 'light');
+      }
+    });
+    return () => sub.remove();
+  }, [theme, setColorScheme]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
