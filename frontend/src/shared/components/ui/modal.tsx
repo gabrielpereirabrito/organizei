@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal as RNModal, View, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
+import { MotiView } from 'moti';
 import { cn } from '@/shared/utils/cn';
 import { X } from 'lucide-react-native';
 import { useThemeColors } from '@/shared/theme/colors';
@@ -28,7 +29,12 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               className="w-full max-w-lg"
             >
-              <View className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-lg w-full">
+              <MotiView
+                from={{ opacity: 0, scale: 0.95, translateY: 10 }}
+                animate={{ opacity: 1, scale: 1, translateY: 0 }}
+                transition={{ type: 'timing', duration: 220 }}
+                className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-lg w-full"
+              >
                 <View className="flex-row justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800">
                   <Text className="text-xl font-semibold text-slate-900 dark:text-white">
                     {title}
@@ -40,7 +46,7 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
                 <View className="p-5">
                   {children}
                 </View>
-              </View>
+              </MotiView>
             </KeyboardAvoidingView>
           </TouchableWithoutFeedback>
         </View>

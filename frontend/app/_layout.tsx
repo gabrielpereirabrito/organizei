@@ -5,8 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { loadPrivacyState } from '@/shared/stores/privacy.store';
 import { loadThemeState, useThemeStore } from '@/shared/stores/theme.store';
 import { loadAuthState } from '@/modules/auth/stores/auth.store';
-import Toast from 'react-native-toast-message';
-import { toastConfig } from '@/shared/components/ui/ToastConfig';
+import { ToastHost } from '@/shared/components/ui/ToastConfig';
 import { useColorScheme } from 'nativewind';
 import { Appearance } from 'react-native';
 import '../global.css';
@@ -46,7 +45,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <Slot />
-        <Toast config={toastConfig} />
+        <ToastHost />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
