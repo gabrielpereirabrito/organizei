@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '@/shared/api-client/api';
 import { useAuthStore } from '../../stores/auth.store';
 import { toastService } from '@/shared/services/toast.service';
-import { ThemeToggle, Checkbox } from '@/shared/components/ui';
+import { ThemeToggle, Checkbox, Input, Button, IconButton } from '@/shared/components/ui';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Fingerprint } from 'lucide-react-native';
@@ -97,50 +97,46 @@ export function LoginPage() {
         <Text className="text-3xl font-bold mb-8 text-finance-texto dark:text-white">Login</Text>
         
         <View className="gap-4">
-          <TextInput 
-            className="border border-slate-300 dark:border-slate-700 rounded-lg p-4 text-slate-900 dark:text-white"
+          <Input
             placeholder="E-mail"
-            placeholderTextColor="#94a3b8"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <TextInput 
-            className="border border-slate-300 dark:border-slate-700 rounded-lg p-4 text-slate-900 dark:text-white"
+          <Input
             placeholder="Senha"
-            placeholderTextColor="#94a3b8"
             value={senha}
             onChangeText={setSenha}
             secureTextEntry
           />
-          
-          <Checkbox 
-            checked={rememberMe} 
-            onChange={setRememberMe} 
-            label="Lembrar-me" 
+
+          <Checkbox
+            checked={rememberMe}
+            onChange={setRememberMe}
+            label="Lembrar-me"
             className="mt-1"
           />
 
           <View className="flex-row gap-3 mt-4">
-            <TouchableOpacity 
-              className={`bg-finance-primaria flex-1 p-4 rounded-lg items-center justify-center ${(!email || !senha || isLoading) ? 'opacity-50' : 'opacity-90 active:opacity-100'}`}
+            <Button
               onPress={handleLogin}
-              disabled={isLoading || !email || !senha}
+              isLoading={isLoading}
+              disabled={!email || !senha}
+              className="flex-1"
             >
-              <Text className="text-white font-semibold text-lg">
-                {isLoading ? 'Entrando...' : 'Entrar'}
-              </Text>
-            </TouchableOpacity>
+              Entrar
+            </Button>
 
             {hasBiometrics && savedCredentialsExist && (
-              <TouchableOpacity 
-                className="bg-finance-primaria/10 dark:bg-slate-800 w-14 rounded-lg items-center justify-center border border-finance-primaria/20 dark:border-slate-700"
+              <IconButton
+                icon={Fingerprint}
+                shape="square"
+                variant="primary"
                 onPress={handleBiometricLogin}
                 disabled={isLoading}
-              >
-                <Fingerprint size={24} color="#0077b6" />
-              </TouchableOpacity>
+                className="w-14 h-12"
+              />
             )}
           </View>
 
