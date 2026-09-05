@@ -22,6 +22,10 @@ const criarRecorrenciaBodySchema = z.object({
   }
   return true;
 }, { message: "intervaloValor e intervaloTipo são obrigatórios para frequência PERSONALIZADA." })
+  .refine(data => data.tipo !== 'TRANSFERENCIA', {
+    message: 'Recorrências do tipo TRANSFERENCIA ainda não são suportadas.',
+    path: ['tipo'],
+  })
 
 
 const editarRecorrenciaLoteBodySchema = z.object({
