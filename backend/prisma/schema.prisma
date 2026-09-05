@@ -12,6 +12,7 @@ model Usuario {
   nome         String?
   senha        String? // Opcional para suportar Google Auth no futuro
   googleId     String?  @unique
+  pushToken    String? // Token do Expo Push (um por usuário — último dispositivo a registrar vence)
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

@@ -1,16 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '@/modules/auth';
+import { registrarPushToken, useRegistrarPushToken } from '@/modules/notificacoes';
 import { ThemeToggle, Button, Input, IconButton, ConfirmDialog } from '@/shared/components/ui';
 import { useThemeColors } from '@/shared/theme/colors';
-import { LogOut, Camera } from 'lucide-react-native';
+import { LogOut, Camera, Bell } from 'lucide-react-native';
 
 export default function Perfil() {
   const { usuario, limparAuth } = useAuthStore();
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [nome, setNome] = useState(usuario?.nome || '');
+  const [notificacoesAtivas, setNotificacoesAtivas] = useState(false);
   const colors = useThemeColors();
+  const { mutate: enviarPushToken } = useRegistrarPushToken();
+
+  useEffect(() => {
+    Notifications.getPermissionsAsync().then(({ status }) => {
+      setNotificacoesAtivas(status === 'granted');
+    });
+  }, []);
+
+  const handleAtivarNotificacoes = useCallback(async () => {
+    const pushToken = await registrarPushToken();
+    if (pushToken) {
+      enviarPushToken(pushToken);
+      setNotificacoesAtivas(true);
+    } else {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificacoesAtivas(status === 'granted');
+    }
+  }, [enviarPushToken]);
 
   // Derivar iniciais do nome para o Avatar placeholder
   const getInitials = (name?: string) => {
@@ -98,6 +119,25 @@ export default function Perfil() {
         </View>
         {/* Usamos o ThemeToggle sem margem para ele ficar perfeitamente alinhado na linha */}
         <ThemeToggle style={{ marginBottom: 0, alignSelf: 'center' }} />
+      </View>
+
+      <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 mb-8 shadow-sm flex-row items-center justify-between">
+        <View className="flex-row items-center flex-1 mr-3">
+          <View className="bg-finance-primaria/20 dark:bg-slate-700 p-2 rounded-lg mr-3">
+            <Bell size={20} color={colors.primaria} />
+          </View>
+          <View className="flex-1">
+            <Text className="font-semibold text-finance-texto dark:text-white text-base">Notificações</Text>
+            <Text className="text-slate-500 dark:text-slate-400 text-sm">
+              {notificacoesAtivas ? 'Ativadas' : 'Avisos de transações vencidas'}
+            </Text>
+          </View>
+        </View>
+        {!notificacoesAtivas && (
+          <Button variant="secondary" size="sm" onPress={handleAtivarNotificacoes}>
+            Ativar
+          </Button>
+        )}
       </View>
 
       {/* Conta / Logout */}

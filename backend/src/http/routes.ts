@@ -6,6 +6,7 @@ import { criarCategoria, listarCategorias, buscarCategoriaPorId, inativarCategor
 import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deletarTransacao, projecaoFluxoCaixa } from './controllers/transacoes'
 import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote, listarRecorrencias, buscarRecorrenciaPorId } from './controllers/recorrencias'
 import { criarMeta, listarMetas, atualizarMeta, deletarMeta } from './controllers/metas'
+import { registrarPushToken } from './controllers/usuarios'
 
 // Limite mais estrito que o global (100 req/min) para as rotas de autenticação,
 // que são o alvo natural de força bruta (ADR 0006). Sobrescreve por rota o
@@ -68,5 +69,8 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.get('/metas', listarMetas)
     authedApp.put('/metas/:id', atualizarMeta)
     authedApp.delete('/metas/:id', deletarMeta)
+
+    // Usuário
+    authedApp.patch('/usuarios/push-token', registrarPushToken)
   })
 }
