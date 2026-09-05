@@ -13,6 +13,9 @@ export interface ITransacao {
   categoriaId: string;
   categoria?: ICategoria;
   contaId: string;
+  conta?: { nome: string };
+  contaDestinoId?: string;
+  contaDestino?: { nome: string };
 }
 
 export interface IResumoMensal {
@@ -30,11 +33,17 @@ export interface IResumoMensal {
   }[];
 }
 
+export interface IProjecaoFluxoCaixa {
+  saldoInicial: number;
+  pontos: { data: string; saldo: number }[];
+}
+
 export const transacoesKeys = {
   all: ['transacoes'] as const,
   lists: () => [...transacoesKeys.all, 'list'] as const,
   list: (filtros: any) => [...transacoesKeys.lists(), filtros] as const,
   resumo: (mes: number, ano: number) => [...transacoesKeys.all, 'resumo', { mes, ano }] as const,
+  projecao: (meses: number) => [...transacoesKeys.all, 'projecao', meses] as const,
 };
 
 export function useTransacoes(filtros?: { dataInicio?: string; dataFim?: string; page?: number; limit?: number }) {
@@ -53,6 +62,16 @@ export function useResumoMensal(mes: number, ano: number) {
     queryKey: transacoesKeys.resumo(mes, ano),
     queryFn: async () => {
       const { data } = await api.get<IResumoMensal>('/transacoes/resumo-mensal', { params: { mes, ano } });
+      return data;
+    },
+  });
+}
+
+export function useProjecaoFluxoCaixa(meses: number = 3) {
+  return useQuery({
+    queryKey: transacoesKeys.projecao(meses),
+    queryFn: async () => {
+      const { data } = await api.get<IProjecaoFluxoCaixa>('/transacoes/projecao-fluxo-caixa', { params: { meses } });
       return data;
     },
   });
@@ -77,8 +96,9 @@ export interface INovaTransacao {
   tipo: 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA';
   dataVencimento: string;
   dataPagamento?: string;
-  categoriaId: string;
+  categoriaId?: string;
   contaId: string;
+  contaDestinoId?: string;
   status: 'PENDENTE' | 'PAGA' | 'VENCIDA';
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { MotiView } from 'moti';
 import { useResumoMensal } from '@/modules/transacoes';
+import { ProjecaoFluxoCaixaChart } from '../../components/ProjecaoFluxoCaixaChart';
 import { Card, ThemeToggle, IconButton, Skeleton, EmptyState } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
@@ -64,7 +65,11 @@ export function OverviewPage() {
         </Card>
       </View>
 
-      <Text className="text-xl font-bold text-finance-texto dark:text-white mt-10 mb-4">Despesas por Categoria</Text>
+      <View className="mt-10">
+        <ProjecaoFluxoCaixaChart />
+      </View>
+
+      <Text className="text-xl font-bold text-finance-texto dark:text-white mb-4">Despesas por Categoria</Text>
       {resumo.gastosPorCategoria.length > 0 ? (
         resumo.gastosPorCategoria.map((cat, idx) => (
           <MotiView

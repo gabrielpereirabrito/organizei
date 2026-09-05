@@ -42,6 +42,7 @@ export function TransacoesPage() {
 
   const renderItem = ({ item, index }: { item: ITransacao, index: number }) => {
     const isReceita = item.tipo === 'RECEITA';
+    const isTransferencia = item.tipo === 'TRANSFERENCIA';
 
     return (
       <MotiView
@@ -53,15 +54,19 @@ export function TransacoesPage() {
           <View className="flex-row justify-between items-center mb-2">
             <View className="flex-1">
               <Text className="text-lg font-semibold text-finance-texto dark:text-white">{item.descricao}</Text>
-              {item.categoria && (
+              {isTransferencia ? (
+                <Text className="text-sm text-finance-mutado mt-1">
+                  De {item.conta?.nome ?? '—'} para {item.contaDestino?.nome ?? '—'}
+                </Text>
+              ) : item.categoria && (
                 <View className="flex-row items-center gap-1 mt-1">
                   <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.categoria.cor }} />
                   <Text className="text-sm text-finance-mutado">{item.categoria.nome}</Text>
                 </View>
               )}
             </View>
-            <Text className={`text-lg font-bold ${isReceita ? 'text-finance-verde' : 'text-finance-vermelho'}`}>
-              {isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
+            <Text className={`text-lg font-bold ${isTransferencia ? 'text-finance-primaria' : isReceita ? 'text-finance-verde' : 'text-finance-vermelho'}`}>
+              {isTransferencia ? '⇄' : isReceita ? '+' : '-'} {formatarMoeda(item.valor)}
             </Text>
           </View>
           <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">

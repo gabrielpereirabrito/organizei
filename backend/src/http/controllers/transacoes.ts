@@ -3,17 +3,31 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { checkOwnership } from '@/utils/checkOwnership'
+import { AppError } from '@/utils/AppError'
 
-const criarTransacaoBodySchema = z.object({
-  descricao: z.string().min(1),
-  valor: z.number().positive(), // Em centavos, sempre positivo no payload
-  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
-  status: z.enum(['PENDENTE', 'PAGA', 'VENCIDA']).default('PAGA'),
-  dataVencimento: z.coerce.date(), // Converte string ISO-8601 para Date do JS
-  dataPagamento: z.coerce.date().optional(),
-  contaId: z.string().uuid(),
-  categoriaId: z.string().uuid(),
-})
+const criarTransacaoBodySchema = z
+  .object({
+    descricao: z.string().min(1),
+    valor: z.number().positive(), // Em centavos, sempre positivo no payload
+    tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
+    status: z.enum(['PENDENTE', 'PAGA', 'VENCIDA']).default('PAGA'),
+    dataVencimento: z.coerce.date(), // Converte string ISO-8601 para Date do JS
+    dataPagamento: z.coerce.date().optional(),
+    contaId: z.string().uuid(),
+    categoriaId: z.string().uuid().optional(),
+    contaDestinoId: z.string().uuid().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.tipo === 'TRANSFERENCIA') {
+      if (!data.contaDestinoId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['contaDestinoId'], message: 'Conta destino é obrigatória para transferências' })
+      } else if (data.contaDestinoId === data.contaId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['contaDestinoId'], message: 'Conta destino deve ser diferente da conta de origem' })
+      }
+    } else if (!data.categoriaId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['categoriaId'], message: 'Categoria é obrigatória' })
+    }
+  })
 
 const editarTransacaoBodySchema = z.object({
   descricao: z.string().min(1).optional(),
@@ -24,6 +38,7 @@ const editarTransacaoBodySchema = z.object({
   dataPagamento: z.coerce.date().optional().nullable(),
   contaId: z.string().uuid().optional(),
   categoriaId: z.string().uuid().optional(),
+  contaDestinoId: z.string().uuid().optional(),
 })
 
 const listarTransacoesQuerySchema = z.object({
@@ -42,18 +57,58 @@ const resumoMensalQuerySchema = z.object({
   ano: z.coerce.number().min(2000),
 })
 
+const projecaoFluxoCaixaQuerySchema = z.object({
+  meses: z.coerce.number().min(1).max(12).default(3),
+})
+
+// Transferências não exigem uma categoria escolhida pelo usuário — usamos uma
+// categoria-sistema própria para não precisar tornar `categoriaId` nullable no schema.
+async function obterOuCriarCategoriaTransferencia(usuarioId: string) {
+  const existente = await prisma.categoria.findFirst({
+    where: { usuarioId, tipo: 'TRANSFERENCIA' },
+  })
+  if (existente) return existente
+
+  return prisma.categoria.create({
+    data: {
+      nome: 'Transferência entre contas',
+      tipo: 'TRANSFERENCIA',
+      cor: '#71717A',
+      usuarioId,
+    },
+  })
+}
+
 export async function criarTransacao(request: FastifyRequest, reply: FastifyReply) {
-  const { descricao, valor, tipo, status, dataVencimento, dataPagamento, contaId, categoriaId } = criarTransacaoBodySchema.parse(request.body)
+  const { descricao, valor, tipo, status, dataVencimento, dataPagamento, contaId, categoriaId, contaDestinoId } = criarTransacaoBodySchema.parse(request.body)
   const usuarioId = request.user.sub
 
-  // Verifica se a conta e categoria pertencem ao usuário logado
-  const [contaExiste, categoriaExiste] = await Promise.all([
+  const buscaCategoria = categoriaId
+    ? prisma.categoria.findUnique({ where: { id: categoriaId } })
+    : null
+
+  // Verifica se a conta, categoria e (se transferência) a conta destino pertencem ao usuário logado
+  const [contaExiste, categoriaExiste, contaDestinoExiste] = await Promise.all([
     prisma.conta.findUnique({ where: { id: contaId } }),
-    prisma.categoria.findUnique({ where: { id: categoriaId } }),
+    buscaCategoria,
+    tipo === 'TRANSFERENCIA' && contaDestinoId ? prisma.conta.findUnique({ where: { id: contaDestinoId } }) : null,
   ])
 
   checkOwnership(contaExiste, usuarioId, 'Conta')
-  checkOwnership(categoriaExiste, usuarioId, 'Categoria')
+  if (categoriaId) {
+    checkOwnership(categoriaExiste, usuarioId, 'Categoria')
+  }
+  if (tipo === 'TRANSFERENCIA') {
+    checkOwnership(contaDestinoExiste, usuarioId, 'Conta destino')
+  }
+  // Garantido pelo superRefine do schema quando tipo === 'TRANSFERENCIA'
+  const contaDestinoIdFinal = tipo === 'TRANSFERENCIA' ? (contaDestinoId as string) : null
+
+  const categoriaIdFinal = categoriaId ?? (tipo === 'TRANSFERENCIA' ? (await obterOuCriarCategoriaTransferencia(usuarioId)).id : null)
+
+  if (!categoriaIdFinal) {
+    throw new AppError('Categoria é obrigatória', 400)
+  }
 
   const operations: any[] = []
 
@@ -70,22 +125,30 @@ export async function criarTransacao(request: FastifyRequest, reply: FastifyRepl
         dataPagamento: dataPagamentoFinal,
         usuarioId,
         contaId,
-        categoriaId,
+        categoriaId: categoriaIdFinal,
+        contaDestinoId: contaDestinoIdFinal,
       },
     })
   )
 
   if (status === 'PAGA') {
-    operations.push(
-      prisma.conta.update({
-        where: { id: contaId },
-        data: {
-          saldoAtual: {
-            [tipo === 'RECEITA' ? 'increment' : 'decrement']: valor,
+    if (tipo === 'TRANSFERENCIA' && contaDestinoIdFinal) {
+      operations.push(
+        prisma.conta.update({ where: { id: contaId }, data: { saldoAtual: { decrement: valor } } }),
+        prisma.conta.update({ where: { id: contaDestinoIdFinal }, data: { saldoAtual: { increment: valor } } })
+      )
+    } else {
+      operations.push(
+        prisma.conta.update({
+          where: { id: contaId },
+          data: {
+            saldoAtual: {
+              [tipo === 'RECEITA' ? 'increment' : 'decrement']: valor,
+            },
           },
-        },
-      })
-    )
+        })
+      )
+    }
   }
 
   const [transacao] = await prisma.$transaction(operations)
@@ -103,18 +166,38 @@ export async function editarTransacao(request: FastifyRequest, reply: FastifyRep
     const antiga = await tx.transacao.findUnique({ where: { id } })
     checkOwnership(antiga, usuarioId, 'Transação')
 
+    // Valida o estado final mesclado antes de mutar qualquer saldo
+    const tipoFinal = updates.tipo ?? antiga.tipo
+    const contaIdFinal = updates.contaId ?? antiga.contaId
+    const contaDestinoIdFinal = updates.contaDestinoId !== undefined ? updates.contaDestinoId : antiga.contaDestinoId
+
+    if (tipoFinal === 'TRANSFERENCIA') {
+      if (!contaDestinoIdFinal || contaDestinoIdFinal === contaIdFinal) {
+        throw new AppError('Conta destino é obrigatória e deve ser diferente da conta de origem', 400)
+      }
+      if (updates.contaDestinoId) {
+        const contaDestinoExiste = await tx.conta.findUnique({ where: { id: updates.contaDestinoId } })
+        checkOwnership(contaDestinoExiste, usuarioId, 'Conta destino')
+      }
+    }
+
     // Estorna se estava PAGA
     if (antiga.status === 'PAGA') {
-      await tx.conta.update({
-        where: { id: antiga.contaId },
-        data: {
-          saldoAtual: { [antiga.tipo === 'RECEITA' ? 'decrement' : 'increment']: antiga.valor }
-        }
-      })
+      if (antiga.tipo === 'TRANSFERENCIA' && antiga.contaDestinoId) {
+        await tx.conta.update({ where: { id: antiga.contaId }, data: { saldoAtual: { increment: antiga.valor } } })
+        await tx.conta.update({ where: { id: antiga.contaDestinoId }, data: { saldoAtual: { decrement: antiga.valor } } })
+      } else {
+        await tx.conta.update({
+          where: { id: antiga.contaId },
+          data: {
+            saldoAtual: { [antiga.tipo === 'RECEITA' ? 'decrement' : 'increment']: antiga.valor }
+          }
+        })
+      }
     }
 
     const statusNovo = updates.status !== undefined ? updates.status : antiga.status;
-    
+
     // Ajusta dataPagamento baseado no novo status
     if (statusNovo === 'PAGA' && antiga.status !== 'PAGA' && updates.dataPagamento === undefined) {
       updates.dataPagamento = new Date();
@@ -129,12 +212,17 @@ export async function editarTransacao(request: FastifyRequest, reply: FastifyRep
 
     // Aplica novo valor se estiver PAGA
     if (atualizada.status === 'PAGA') {
-      await tx.conta.update({
-        where: { id: atualizada.contaId },
-        data: {
-          saldoAtual: { [atualizada.tipo === 'RECEITA' ? 'increment' : 'decrement']: atualizada.valor }
-        }
-      })
+      if (atualizada.tipo === 'TRANSFERENCIA' && atualizada.contaDestinoId) {
+        await tx.conta.update({ where: { id: atualizada.contaId }, data: { saldoAtual: { decrement: atualizada.valor } } })
+        await tx.conta.update({ where: { id: atualizada.contaDestinoId }, data: { saldoAtual: { increment: atualizada.valor } } })
+      } else {
+        await tx.conta.update({
+          where: { id: atualizada.contaId },
+          data: {
+            saldoAtual: { [atualizada.tipo === 'RECEITA' ? 'increment' : 'decrement']: atualizada.valor }
+          }
+        })
+      }
     }
 
     return atualizada
@@ -153,12 +241,17 @@ export async function deletarTransacao(request: FastifyRequest, reply: FastifyRe
     checkOwnership(antiga, usuarioId, 'Transação')
 
     if (antiga.status === 'PAGA') {
-      await tx.conta.update({
-        where: { id: antiga.contaId },
-        data: {
-          saldoAtual: { [antiga.tipo === 'RECEITA' ? 'decrement' : 'increment']: antiga.valor }
-        }
-      })
+      if (antiga.tipo === 'TRANSFERENCIA' && antiga.contaDestinoId) {
+        await tx.conta.update({ where: { id: antiga.contaId }, data: { saldoAtual: { increment: antiga.valor } } })
+        await tx.conta.update({ where: { id: antiga.contaDestinoId }, data: { saldoAtual: { decrement: antiga.valor } } })
+      } else {
+        await tx.conta.update({
+          where: { id: antiga.contaId },
+          data: {
+            saldoAtual: { [antiga.tipo === 'RECEITA' ? 'decrement' : 'increment']: antiga.valor }
+          }
+        })
+      }
     }
 
     await tx.transacao.delete({ where: { id } })
@@ -201,6 +294,9 @@ export async function resumoMensal(request: FastifyRequest, reply: FastifyReply)
     if (t.tipo === 'RECEITA') {
       totalReceitasPrevistas += t.valor
       if (isPaga) totalReceitasPagas += t.valor
+    } else if (t.tipo === 'TRANSFERENCIA') {
+      // Transferências entre contas próprias não são receita nem despesa
+      continue
     } else {
       totalDespesasPrevistas += t.valor
       if (isPaga) totalDespesasPagas += t.valor
@@ -263,6 +359,7 @@ export async function listarTransacoes(request: FastifyRequest, reply: FastifyRe
       include: {
         categoria: { select: { nome: true, cor: true, icone: true } },
         conta: { select: { nome: true } },
+        contaDestino: { select: { nome: true } },
       }
     }),
     prisma.transacao.count({ where })
@@ -277,4 +374,55 @@ export async function listarTransacoes(request: FastifyRequest, reply: FastifyRe
       totalPages: Math.ceil(total / limit),
     }
   })
+}
+
+export async function projecaoFluxoCaixa(request: FastifyRequest, reply: FastifyReply) {
+  const { meses } = projecaoFluxoCaixaQuerySchema.parse(request.query)
+  const usuarioId = request.user.sub
+
+  const contas = await prisma.conta.findMany({
+    where: { usuarioId, ativa: true },
+    select: { saldoAtual: true },
+  })
+  const saldoInicial = contas.reduce((acc, conta) => acc + conta.saldoAtual, 0)
+
+  const hoje = new Date()
+  const dataLimite = new Date(hoje)
+  dataLimite.setMonth(dataLimite.getMonth() + meses)
+
+  // TRANSFERENCIA fica de fora: move dinheiro entre contas do próprio usuário,
+  // efeito líquido zero no saldo total projetado.
+  const pendentes = await prisma.transacao.findMany({
+    where: {
+      usuarioId,
+      status: 'PENDENTE',
+      tipo: { in: ['RECEITA', 'DESPESA'] },
+      dataVencimento: { gt: hoje, lte: dataLimite },
+    },
+    orderBy: { dataVencimento: 'asc' },
+    select: { valor: true, tipo: true, dataVencimento: true },
+  })
+
+  // Agrupa em buckets semanais para manter o gráfico legível independente de `meses`
+  const UMA_SEMANA_EM_MS = 7 * 24 * 60 * 60 * 1000
+  const pontos: { data: string; saldo: number }[] = [{ data: hoje.toISOString(), saldo: saldoInicial }]
+
+  let saldoAcumulado = saldoInicial
+  let indiceTransacao = 0
+  let inicioBucket = hoje.getTime()
+
+  while (inicioBucket < dataLimite.getTime()) {
+    const fimBucket = Math.min(inicioBucket + UMA_SEMANA_EM_MS, dataLimite.getTime())
+
+    while (indiceTransacao < pendentes.length && pendentes[indiceTransacao].dataVencimento.getTime() <= fimBucket) {
+      const t = pendentes[indiceTransacao]
+      saldoAcumulado += t.tipo === 'RECEITA' ? t.valor : -t.valor
+      indiceTransacao++
+    }
+
+    pontos.push({ data: new Date(fimBucket).toISOString(), saldo: saldoAcumulado })
+    inicioBucket = fimBucket
+  }
+
+  return reply.status(200).send({ saldoInicial, pontos })
 }
