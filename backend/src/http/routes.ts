@@ -3,7 +3,7 @@ import { cadastro, login, refresh } from './controllers/auth'
 import { verificarJwt } from './middlewares/verificar-jwt'
 import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta, ativarConta, obterSaldoTotal } from './controllers/contas'
 import { criarCategoria, listarCategorias, buscarCategoriaPorId, inativarCategoria, ativarCategoria, atualizarCategoria, deletarCategoria } from './controllers/categorias'
-import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deletarTransacao } from './controllers/transacoes'
+import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deletarTransacao, projecaoFluxoCaixa } from './controllers/transacoes'
 import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote, listarRecorrencias, buscarRecorrenciaPorId } from './controllers/recorrencias'
 import { criarMeta, listarMetas, atualizarMeta, deletarMeta } from './controllers/metas'
 
@@ -54,6 +54,7 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.put('/transacoes/:id', editarTransacao)
     authedApp.delete('/transacoes/:id', deletarTransacao)
     authedApp.get('/transacoes/resumo-mensal', resumoMensal)
+    authedApp.get('/transacoes/projecao-fluxo-caixa', projecaoFluxoCaixa)
 
     // Recorrências
     authedApp.post('/recorrencias', criarRecorrencia)
