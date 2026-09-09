@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { cn } from '@/shared/utils/cn';
 
-type ChoiceChipVariant = 'neutral' | 'success' | 'danger';
+type ChoiceChipVariant = 'neutral' | 'success' | 'danger' | 'warning';
 
 interface ChoiceChipProps {
   label: string;
@@ -16,12 +16,14 @@ const SELECTED_CONTAINER_CLASSES: Record<ChoiceChipVariant, string> = {
   neutral: 'bg-finance-primaria/10 border-finance-primaria',
   success: 'bg-finance-verde/10 border-finance-verde',
   danger: 'bg-finance-vermelho/10 border-finance-vermelho',
+  warning: 'bg-finance-alerta/10 border-finance-alerta',
 };
 
 const SELECTED_TEXT_CLASSES: Record<ChoiceChipVariant, string> = {
   neutral: 'text-finance-primaria',
   success: 'text-finance-verde',
   danger: 'text-finance-vermelho',
+  warning: 'text-finance-alerta',
 };
 
 export function ChoiceChip({ label, selected, onPress, variant = 'neutral', className }: ChoiceChipProps) {
