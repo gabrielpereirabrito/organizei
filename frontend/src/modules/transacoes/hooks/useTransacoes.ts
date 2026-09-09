@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api-client/api';
 import { ICategoria } from '@/modules/categorias';
 
@@ -46,14 +46,30 @@ export const transacoesKeys = {
   projecao: (meses: number) => [...transacoesKeys.all, 'projecao', meses] as const,
 };
 
-export function useTransacoes(filtros?: { dataInicio?: string; dataFim?: string; page?: number; limit?: number }) {
-  return useQuery({
+export interface IFiltrosTransacoes {
+  dataInicio?: string;
+  dataFim?: string;
+  status?: 'PENDENTE' | 'PAGA' | 'VENCIDA';
+}
+
+interface IPaginaTransacoes {
+  data: ITransacao[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+// useInfiniteQuery: cada mudança de filtro (mês, status) gera uma queryKey nova,
+// o que reinicia a paginação para a página 1 automaticamente.
+export function useTransacoes(filtros?: IFiltrosTransacoes, limit: number = 20) {
+  return useInfiniteQuery({
     queryKey: transacoesKeys.list(filtros),
-    queryFn: async () => {
-      // Endpoint de transacoes agora retorna { data: [], meta: {} }
-      const { data } = await api.get<{ data: ITransacao[], meta: any }>('/transacoes', { params: filtros });
+    queryFn: async ({ pageParam }) => {
+      const { data } = await api.get<IPaginaTransacoes>('/transacoes', {
+        params: { ...filtros, page: pageParam, limit },
+      });
       return data;
     },
+    initialPageParam: 1,
+    getNextPageParam: lastPage => (lastPage.meta.page < lastPage.meta.totalPages ? lastPage.meta.page + 1 : undefined),
   });
 }
 

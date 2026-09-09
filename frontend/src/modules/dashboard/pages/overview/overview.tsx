@@ -3,7 +3,7 @@ import { View, Text, ScrollView } from 'react-native';
 import { MotiView } from 'moti';
 import { useResumoMensal } from '@/modules/transacoes';
 import { ProjecaoFluxoCaixaChart } from '../../components/ProjecaoFluxoCaixaChart';
-import { Card, ThemeToggle, IconButton, Skeleton, EmptyState } from '@/shared/components/ui';
+import { Card, ThemeToggle, IconButton, Skeleton, EmptyState, StatusBadge } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
 import { Eye, EyeOff, AlertTriangle } from 'lucide-react-native';
@@ -62,6 +62,26 @@ export function OverviewPage() {
         <Card className="flex-1 min-w-[150px]">
           <Text className="text-finance-mutado dark:text-slate-400 font-medium mb-1">Despesas</Text>
           <Text className="text-2xl font-bold text-finance-vermelho">{formatarMoeda(resumo.totalDespesasPagas)}</Text>
+        </Card>
+      </View>
+
+      <View className="flex-row flex-wrap justify-between gap-4 mt-4">
+        <Card className="flex-1 min-w-[150px] border-dashed">
+          <View className="flex-row items-center gap-2 mb-1">
+            <Text className="text-finance-mutado dark:text-slate-400 font-medium">Saldo previsto</Text>
+            <StatusBadge label="até o fim do mês" variant="warning" />
+          </View>
+          <Text className="text-2xl font-bold text-finance-texto dark:text-white">{formatarMoeda(resumo.saldoPrevisto)}</Text>
+        </Card>
+
+        <Card className="flex-1 min-w-[150px] border-dashed">
+          <Text className="text-finance-mutado dark:text-slate-400 font-medium mb-1">Receitas previstas</Text>
+          <Text className="text-xl font-bold text-finance-verde">{formatarMoeda(resumo.totalReceitasPrevistas)}</Text>
+        </Card>
+
+        <Card className="flex-1 min-w-[150px] border-dashed">
+          <Text className="text-finance-mutado dark:text-slate-400 font-medium mb-1">Despesas previstas</Text>
+          <Text className="text-xl font-bold text-finance-vermelho">{formatarMoeda(resumo.totalDespesasPrevistas)}</Text>
         </Card>
       </View>
 
