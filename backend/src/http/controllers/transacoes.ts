@@ -171,14 +171,26 @@ export async function editarTransacao(request: FastifyRequest, reply: FastifyRep
     const contaIdFinal = updates.contaId ?? antiga.contaId
     const contaDestinoIdFinal = updates.contaDestinoId !== undefined ? updates.contaDestinoId : antiga.contaDestinoId
 
+    // A transação ser do usuário não basta: `contaId`/`categoriaId` vêm do corpo e
+    // apontam para onde o saldo vai ser movido. Sem checar a posse aqui, um id
+    // alheio no corpo faz o saldo de OUTRO usuário ser debitado/creditado.
+    if (updates.contaId) {
+      const contaExiste = await tx.conta.findUnique({ where: { id: updates.contaId } })
+      checkOwnership(contaExiste, usuarioId, 'Conta')
+    }
+    if (updates.categoriaId) {
+      const categoriaExiste = await tx.categoria.findUnique({ where: { id: updates.categoriaId } })
+      checkOwnership(categoriaExiste, usuarioId, 'Categoria')
+    }
+
     if (tipoFinal === 'TRANSFERENCIA') {
       if (!contaDestinoIdFinal || contaDestinoIdFinal === contaIdFinal) {
         throw new AppError('Conta destino é obrigatória e deve ser diferente da conta de origem', 400)
       }
-      if (updates.contaDestinoId) {
-        const contaDestinoExiste = await tx.conta.findUnique({ where: { id: updates.contaDestinoId } })
-        checkOwnership(contaDestinoExiste, usuarioId, 'Conta destino')
-      }
+      // Checa o destino final, não só o que veio no corpo: uma transação pode ter
+      // sido salva antes com um `contaDestinoId` alheio e só agora virar TRANSFERENCIA.
+      const contaDestinoExiste = await tx.conta.findUnique({ where: { id: contaDestinoIdFinal } })
+      checkOwnership(contaDestinoExiste, usuarioId, 'Conta destino')
     }
 
     // Estorna se estava PAGA
