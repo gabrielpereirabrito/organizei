@@ -55,8 +55,17 @@ app.setErrorHandler((error, _request, reply) => {
   // Erros do próprio Fastify/plugins (ex.: @fastify/rate-limit -> 429, corpo JSON
   // malformado -> 400) já vêm com um statusCode 4xx válido. Sem este branch, o handler
   // mascarava todos eles como 500 genérico, escondendo do cliente o motivo real do erro.
-  if (typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
-    return reply.status(error.statusCode).send({ message: error.message })
+  // `error` chega aqui como `unknown` (as narrowings acima não o estreitam), então
+  // os campos precisam ser lidos por um shape explícito em vez de acesso direto.
+  const erroNativo = error as { statusCode?: unknown; message?: unknown }
+  if (
+    typeof erroNativo.statusCode === 'number' &&
+    erroNativo.statusCode >= 400 &&
+    erroNativo.statusCode < 500
+  ) {
+    const mensagem =
+      typeof erroNativo.message === 'string' ? erroNativo.message : 'Requisição inválida.'
+    return reply.status(erroNativo.statusCode).send({ message: mensagem })
   }
 
   if (process.env.NODE_ENV !== 'production') {

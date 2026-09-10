@@ -4,6 +4,11 @@
     "module": "commonjs",
     "lib": ["es2022"],
     "moduleResolution": "node",
+    // TypeScript 6 já recusa `moduleResolution: node` (node10) e o TS 7 vai
+    // removê-lo de vez. Isto só destrava o build; a migração de verdade é passar
+    // para "node16"/"bundler", que muda como imports são resolvidos e pede um
+    // teste do backend inteiro. Ver relatório da sessão de 09/09/2026.
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -16,5 +21,8 @@
     "skipLibCheck": true,
     "typeRoots": ["./node_modules/@types", "./src/@types"]
   },
-  "include": ["src/**/*", "prisma.config.ts"]
+  "include": ["src/**/*", "prisma.config.ts"],
+  // Testes ficam fora do build de produção. Para checar os tipos deles, use
+  // `npm run typecheck` (tsconfig.test.json), que inclui tudo.
+  "exclude": ["node_modules", "build", "src/**/*.test.ts", "src/test/**"]
 }
