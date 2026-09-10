@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { checkOwnership } from '@/utils/checkOwnership'
-import { calcularInstanciasRecorrencia } from '@/utils/dateHelpers'
+import { calcularInstanciasRecorrencia, adicionarMeses } from '@/utils/dateHelpers'
 
 const criarRecorrenciaBodySchema = z.object({
   descricao: z.string().min(1),
@@ -57,8 +57,10 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
   checkOwnership(contaExiste, usuarioId, 'Conta')
   checkOwnership(categoriaExiste, usuarioId, 'Categoria')
 
-  const dataFim = new Date(dataInicio)
-  dataFim.setMonth(dataFim.getMonth() + duracaoMeses)
+  // `adicionarMeses` em vez de `setMonth` direto: uma recorrência que começa dia
+  // 31 teria a data de término transbordada para o mês seguinte (31/01 + 1 mês
+  // viraria 03/03 em vez de 28/02), estendendo o fim para além do contratado.
+  const dataFim = adicionarMeses(dataInicio, duracaoMeses)
 
   const recorrencia = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const molde = await tx.recorrencia.create({
