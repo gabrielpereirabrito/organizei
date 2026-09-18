@@ -3,30 +3,39 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { checkOwnership } from '@/utils/checkOwnership'
+import { AppError } from '@/utils/AppError'
 import { calcularInstanciasRecorrencia, adicionarMeses } from '@/utils/dateHelpers'
 
-const criarRecorrenciaBodySchema = z.object({
-  descricao: z.string().min(1),
-  valor: z.number().positive(),
-  tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
-  frequencia: z.enum(['SEMANAL', 'MENSAL', 'ANUAL', 'PERSONALIZADA']),
-  intervaloValor: z.number().positive().optional(),
-  intervaloTipo: z.enum(['DIAS', 'DIAS_UTEIS', 'SEMANAS', 'MESES', 'ANOS']).optional(),
-  dataInicio: z.coerce.date(),
-  duracaoMeses: z.number().positive().default(12),
-  contaId: z.string().uuid(),
-  categoriaId: z.string().uuid(),
-}).refine(data => {
-  if (data.frequencia === 'PERSONALIZADA') {
-    return data.intervaloValor !== undefined && data.intervaloTipo !== undefined;
-  }
-  return true;
-}, { message: "intervaloValor e intervaloTipo são obrigatórios para frequência PERSONALIZADA." })
-  .refine(data => data.tipo !== 'TRANSFERENCIA', {
+const criarRecorrenciaBodySchema = z
+  .object({
+    descricao: z.string().min(1),
+    valor: z.number().positive(),
+    tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
+    frequencia: z.enum(['SEMANAL', 'MENSAL', 'ANUAL', 'PERSONALIZADA']),
+    intervaloValor: z.number().positive().optional(),
+    intervaloTipo: z.enum(['DIAS', 'DIAS_UTEIS', 'SEMANAS', 'MESES', 'ANOS']).optional(),
+    dataInicio: z.coerce.date(),
+    duracaoMeses: z.number().positive().default(12),
+    contaId: z.string().uuid(),
+    categoriaId: z.string().uuid(),
+    subcategoriaId: z.string().uuid().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.frequencia === 'PERSONALIZADA') {
+        return data.intervaloValor !== undefined && data.intervaloTipo !== undefined
+      }
+      return true
+    },
+    {
+      message:
+        'intervaloValor e intervaloTipo são obrigatórios para frequência PERSONALIZADA.',
+    },
+  )
+  .refine((data) => data.tipo !== 'TRANSFERENCIA', {
     message: 'Recorrências do tipo TRANSFERENCIA ainda não são suportadas.',
     path: ['tipo'],
   })
-
 
 const editarRecorrenciaLoteBodySchema = z.object({
   descricao: z.string().min(1).optional(),
@@ -43,10 +52,20 @@ const listarRecorrenciasQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
 })
 
-
-
 export async function criarRecorrencia(request: FastifyRequest, reply: FastifyReply) {
-  const { descricao, valor, tipo, frequencia, intervaloValor, intervaloTipo, dataInicio, duracaoMeses, contaId, categoriaId } = criarRecorrenciaBodySchema.parse(request.body)
+  const {
+    descricao,
+    valor,
+    tipo,
+    frequencia,
+    intervaloValor,
+    intervaloTipo,
+    dataInicio,
+    duracaoMeses,
+    contaId,
+    categoriaId,
+    subcategoriaId,
+  } = criarRecorrenciaBodySchema.parse(request.body)
   const usuarioId = request.user.sub
 
   const [contaExiste, categoriaExiste] = await Promise.all([
@@ -56,6 +75,18 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
 
   checkOwnership(contaExiste, usuarioId, 'Conta')
   checkOwnership(categoriaExiste, usuarioId, 'Categoria')
+
+  // Mesma regra das transacoes: posse primeiro (404), coerencia depois (400).
+  if (subcategoriaId) {
+    const subcategoriaExiste = await prisma.subcategoria.findUnique({
+      where: { id: subcategoriaId },
+    })
+    checkOwnership(subcategoriaExiste, usuarioId, 'Subcategoria')
+
+    if (subcategoriaExiste.categoriaId !== categoriaId) {
+      throw new AppError('A subcategoria não pertence à categoria escolhida', 400)
+    }
+  }
 
   // `adicionarMeses` em vez de `setMonth` direto: uma recorrência que começa dia
   // 31 teria a data de término transbordada para o mês seguinte (31/01 + 1 mês
@@ -76,12 +107,19 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
         usuarioId,
         contaId,
         categoriaId,
-      }
+        subcategoriaId,
+      },
     })
 
-    const datasAGerar = calcularInstanciasRecorrencia(dataInicio, dataFim, frequencia, intervaloValor, intervaloTipo)
+    const datasAGerar = calcularInstanciasRecorrencia(
+      dataInicio,
+      dataFim,
+      frequencia,
+      intervaloValor,
+      intervaloTipo,
+    )
 
-    const transacoesAGerar = datasAGerar.map(data => ({
+    const transacoesAGerar = datasAGerar.map((data) => ({
       descricao,
       valor,
       tipo,
@@ -90,6 +128,9 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
       usuarioId,
       contaId,
       categoriaId,
+      // Propaga para cada instancia: sem isto toda transacao vinda de
+      // recorrencia nasceria sem subcategoria e furaria os relatorios.
+      subcategoriaId: subcategoriaId ?? null,
       recorrenciaId: molde.id,
     }))
 
@@ -103,10 +144,15 @@ export async function criarRecorrencia(request: FastifyRequest, reply: FastifyRe
   return reply.status(201).send(recorrencia)
 }
 
-export async function editarRecorrenciaEmLote(request: FastifyRequest, reply: FastifyReply) {
+export async function editarRecorrenciaEmLote(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const paramsSchema = z.object({ id: z.string().uuid() })
   const { id } = paramsSchema.parse(request.params)
-  const { descricao, valor, dataCorte } = editarRecorrenciaLoteBodySchema.parse(request.body)
+  const { descricao, valor, dataCorte } = editarRecorrenciaLoteBodySchema.parse(
+    request.body,
+  )
   const usuarioId = request.user.sub
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -118,24 +164,29 @@ export async function editarRecorrenciaEmLote(request: FastifyRequest, reply: Fa
       data: {
         descricao: descricao ?? molde.descricao,
         valor: valor ?? molde.valor,
-      }
+      },
     })
 
     const updates: any = {}
     if (descricao) updates.descricao = descricao
     if (valor) updates.valor = valor
-    
+
     if (descricao) {
       await tx.transacao.updateMany({
         where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte } },
-        data: { descricao }
+        data: { descricao },
       })
     }
 
     if (valor) {
       await tx.transacao.updateMany({
-        where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte }, status: 'PENDENTE' },
-        data: { valor }
+        where: {
+          recorrenciaId: id,
+          usuarioId,
+          dataVencimento: { gte: dataCorte },
+          status: 'PENDENTE',
+        },
+        data: { valor },
       })
     }
   })
@@ -143,7 +194,10 @@ export async function editarRecorrenciaEmLote(request: FastifyRequest, reply: Fa
   return reply.status(204).send()
 }
 
-export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: FastifyReply) {
+export async function deletarRecorrenciaEmLote(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const paramsSchema = z.object({ id: z.string().uuid() })
   const { id } = paramsSchema.parse(request.params)
   const { dataCorte } = deletarRecorrenciaLoteBodySchema.parse(request.body)
@@ -155,11 +209,16 @@ export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: F
 
     await tx.recorrencia.update({
       where: { id },
-      data: { dataFim: dataCorte }
+      data: { dataFim: dataCorte },
     })
 
     const pagas = await tx.transacao.findMany({
-      where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte }, status: 'PAGA' }
+      where: {
+        recorrenciaId: id,
+        usuarioId,
+        dataVencimento: { gte: dataCorte },
+        status: 'PAGA',
+      },
     })
 
     for (const transacao of pagas) {
@@ -167,14 +226,14 @@ export async function deletarRecorrenciaEmLote(request: FastifyRequest, reply: F
         where: { id: transacao.contaId },
         data: {
           saldoAtual: {
-            [transacao.tipo === 'RECEITA' ? 'decrement' : 'increment']: transacao.valor
-          }
-        }
+            [transacao.tipo === 'RECEITA' ? 'decrement' : 'increment']: transacao.valor,
+          },
+        },
       })
     }
 
     await tx.transacao.deleteMany({
-      where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte } }
+      where: { recorrenciaId: id, usuarioId, dataVencimento: { gte: dataCorte } },
     })
   })
 
@@ -194,9 +253,9 @@ export async function listarRecorrencias(request: FastifyRequest, reply: Fastify
       include: {
         categoria: { select: { nome: true, cor: true, icone: true } },
         conta: { select: { nome: true } },
-      }
+      },
     }),
-    prisma.recorrencia.count({ where: { usuarioId } })
+    prisma.recorrencia.count({ where: { usuarioId } }),
   ])
 
   return reply.status(200).send({
@@ -206,11 +265,14 @@ export async function listarRecorrencias(request: FastifyRequest, reply: Fastify
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-    }
+    },
   })
 }
 
-export async function buscarRecorrenciaPorId(request: FastifyRequest, reply: FastifyReply) {
+export async function buscarRecorrenciaPorId(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const paramsSchema = z.object({ id: z.string().uuid() })
   const { id } = paramsSchema.parse(request.params)
   const usuarioId = request.user.sub
@@ -220,7 +282,7 @@ export async function buscarRecorrenciaPorId(request: FastifyRequest, reply: Fas
     include: {
       categoria: { select: { nome: true, cor: true, icone: true } },
       conta: { select: { nome: true } },
-    }
+    },
   })
 
   checkOwnership(recorrencia, usuarioId, 'Recorrência')
