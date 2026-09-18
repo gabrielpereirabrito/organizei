@@ -22,7 +22,11 @@ export function adicionarMeses(dataBase: Date, meses: number): Date {
   resultado.setMonth(resultado.getMonth() + meses)
 
   // Dia 0 do mês seguinte = último dia do mês atual.
-  const ultimoDiaDoMes = new Date(resultado.getFullYear(), resultado.getMonth() + 1, 0).getDate()
+  const ultimoDiaDoMes = new Date(
+    resultado.getFullYear(),
+    resultado.getMonth() + 1,
+    0,
+  ).getDate()
   resultado.setDate(Math.min(diaDesejado, ultimoDiaDoMes))
 
   return resultado
@@ -33,7 +37,7 @@ export function incrementarData(
   frequencia: FrequenciaRecorrencia,
   iteracao: number,
   intervaloValor?: number | null,
-  intervaloTipo?: TipoIntervalo | null
+  intervaloTipo?: TipoIntervalo | null,
 ): Date {
   let novaData = new Date(dataBase)
   if (frequencia === 'MENSAL') {
@@ -72,27 +76,35 @@ export function calcularInstanciasRecorrencia(
   dataLimite: Date,
   frequencia: FrequenciaRecorrencia,
   intervaloValor?: number | null,
-  intervaloTipo?: TipoIntervalo | null
+  intervaloTipo?: TipoIntervalo | null,
 ): Date[] {
   const datas: Date[] = []
   let iteracao = 0
-  
+
   while (true) {
-    const dataGerada = incrementarData(dataInicio, frequencia, iteracao, intervaloValor, intervaloTipo)
-    
+    const dataGerada = incrementarData(
+      dataInicio,
+      frequencia,
+      iteracao,
+      intervaloValor,
+      intervaloTipo,
+    )
+
     if (dataGerada > dataLimite) {
       break
     }
-    
+
     datas.push(dataGerada)
     iteracao++
 
     // Prevenção contra loops infinitos em caso de parâmetros anômalos
     if (iteracao > 1000) {
-      console.warn('[dateHelpers] Loop de recorrência interrompido para evitar loop infinito (iteracao > 1000).')
+      console.warn(
+        '[dateHelpers] Loop de recorrência interrompido para evitar loop infinito (iteracao > 1000).',
+      )
       break
     }
   }
-  
+
   return datas
 }

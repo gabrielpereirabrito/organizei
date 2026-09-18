@@ -4,7 +4,9 @@ import { renovarRecorrencias } from './manutencaoRecorrencias'
 import { enviarPushNotifications } from '../lib/expoPush'
 
 const formatarMoeda = (centavos: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100)
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+    centavos / 100,
+  )
 
 export function startCronJobs() {
   // Roda todos os dias à meia-noite (00:00)
@@ -38,9 +40,15 @@ export function startCronJobs() {
 
       console.log(`✅ [Cron] ${vencidas.length} transações marcadas como VENCIDA.`)
 
-      const porUsuario = new Map<string, { pushToken: string | null; transacoes: typeof vencidas }>()
+      const porUsuario = new Map<
+        string,
+        { pushToken: string | null; transacoes: typeof vencidas }
+      >()
       for (const transacao of vencidas) {
-        const grupo = porUsuario.get(transacao.usuarioId) ?? { pushToken: transacao.usuario.pushToken, transacoes: [] }
+        const grupo = porUsuario.get(transacao.usuarioId) ?? {
+          pushToken: transacao.usuario.pushToken,
+          transacoes: [],
+        }
         grupo.transacoes.push(transacao)
         porUsuario.set(transacao.usuarioId, grupo)
       }
@@ -75,6 +83,6 @@ export function startCronJobs() {
   cron.schedule('0 2 * * *', async () => {
     await renovarRecorrencias()
   })
-  
+
   console.log('⏰ Cron jobs registrados com sucesso.')
 }
