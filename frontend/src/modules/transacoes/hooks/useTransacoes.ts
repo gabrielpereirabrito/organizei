@@ -1,6 +1,9 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api-client/api';
-import { ICategoria } from '@/modules/categorias';
+// Import profundo de proposito: pelo barrel viria a pagina de categorias junto,
+// e o modulo de categorias ja depende de `transacoesKeys` daqui.
+import { ICategoria } from '@/modules/categorias/hooks/useCategorias';
+import { ISubcategoria } from '@/modules/categorias/hooks/useSubcategorias';
 
 export interface ITransacao {
   id: string;
@@ -12,6 +15,8 @@ export interface ITransacao {
   dataPagamento?: string; // ISO date
   categoriaId: string;
   categoria?: ICategoria;
+  subcategoriaId?: string | null;
+  subcategoria?: ISubcategoria | null;
   contaId: string;
   conta?: { nome: string };
   contaDestinoId?: string;
@@ -26,10 +31,18 @@ export interface IResumoMensal {
   saldoPrevisto: number;
   saldoRealizado: number;
   gastosPorCategoria: {
-    categoria: string;
+    categoriaId: string;
+    categoria: string; // nome da categoria
+    cor: string | null;
     valorPrevisto: number;
     valorRealizado: number;
-    cor: string | null;
+    subcategorias: {
+      subcategoriaId: string;
+      nome: string;
+      cor: string | null;
+      valorPrevisto: number;
+      valorRealizado: number;
+    }[];
   }[];
 }
 
@@ -50,6 +63,8 @@ export interface IFiltrosTransacoes {
   dataInicio?: string;
   dataFim?: string;
   status?: 'PENDENTE' | 'PAGA' | 'VENCIDA';
+  categoriaId?: string;
+  subcategoriaId?: string;
 }
 
 interface IPaginaTransacoes {
@@ -113,6 +128,7 @@ export interface INovaTransacao {
   dataVencimento: string;
   dataPagamento?: string;
   categoriaId?: string;
+  subcategoriaId?: string;
   contaId: string;
   contaDestinoId?: string;
   status: 'PENDENTE' | 'PAGA' | 'VENCIDA';

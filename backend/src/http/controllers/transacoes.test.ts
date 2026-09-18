@@ -22,6 +22,10 @@ const CONTA_ALHEIA = '33333333-0000-4000-8000-000000000003'
 const CATEGORIA = '44444444-0000-4000-8000-000000000004'
 const CATEGORIA_ALHEIA = '55555555-0000-4000-8000-000000000005'
 const TRANSACAO = '66666666-0000-4000-8000-000000000006'
+const SUBCATEGORIA = '77777777-0000-4000-8000-000000000007'
+const SUBCATEGORIA_DE_OUTRA_CATEGORIA = '88888888-0000-4000-8000-000000000008'
+const SUBCATEGORIA_ALHEIA = '99999999-0000-4000-8000-000000000009'
+const OUTRA_CATEGORIA = 'aaaaaaaa-0000-4000-8000-00000000000a'
 
 const VENCIMENTO = new Date(2026, 2, 10)
 
@@ -34,13 +38,73 @@ const SALDO_B_INICIAL = 50_000
 beforeEach(() => {
   prisma = criarPrismaFake({
     contas: [
-      { id: CONTA_A, usuarioId: USUARIO, nome: 'Conta A', saldoAtual: SALDO_A_INICIAL, ativa: true },
-      { id: CONTA_B, usuarioId: USUARIO, nome: 'Conta B', saldoAtual: SALDO_B_INICIAL, ativa: true },
-      { id: CONTA_ALHEIA, usuarioId: OUTRO_USUARIO, nome: 'Conta de outro', saldoAtual: 700_00, ativa: true },
+      {
+        id: CONTA_A,
+        usuarioId: USUARIO,
+        nome: 'Conta A',
+        saldoAtual: SALDO_A_INICIAL,
+        ativa: true,
+      },
+      {
+        id: CONTA_B,
+        usuarioId: USUARIO,
+        nome: 'Conta B',
+        saldoAtual: SALDO_B_INICIAL,
+        ativa: true,
+      },
+      {
+        id: CONTA_ALHEIA,
+        usuarioId: OUTRO_USUARIO,
+        nome: 'Conta de outro',
+        saldoAtual: 700_00,
+        ativa: true,
+      },
     ],
     categorias: [
-      { id: CATEGORIA, usuarioId: USUARIO, nome: 'Mercado', tipo: 'DESPESA', cor: '#000' },
-      { id: CATEGORIA_ALHEIA, usuarioId: OUTRO_USUARIO, nome: 'Alheia', tipo: 'DESPESA', cor: '#111' },
+      {
+        id: CATEGORIA,
+        usuarioId: USUARIO,
+        nome: 'Mercado',
+        tipo: 'DESPESA',
+        cor: '#000',
+      },
+      {
+        id: OUTRA_CATEGORIA,
+        usuarioId: USUARIO,
+        nome: 'Transporte',
+        tipo: 'DESPESA',
+        cor: '#222',
+      },
+      {
+        id: CATEGORIA_ALHEIA,
+        usuarioId: OUTRO_USUARIO,
+        nome: 'Alheia',
+        tipo: 'DESPESA',
+        cor: '#111',
+      },
+    ],
+    subcategorias: [
+      {
+        id: SUBCATEGORIA,
+        usuarioId: USUARIO,
+        categoriaId: CATEGORIA,
+        nome: 'iFood',
+        ativa: true,
+      },
+      {
+        id: SUBCATEGORIA_DE_OUTRA_CATEGORIA,
+        usuarioId: USUARIO,
+        categoriaId: OUTRA_CATEGORIA,
+        nome: 'Combustível',
+        ativa: true,
+      },
+      {
+        id: SUBCATEGORIA_ALHEIA,
+        usuarioId: OUTRO_USUARIO,
+        categoriaId: CATEGORIA_ALHEIA,
+        nome: 'Alheia',
+        ativa: true,
+      },
     ],
   })
   estado.prisma = prisma
@@ -59,7 +123,10 @@ async function criar(body: Record<string, unknown>, usuarioId = USUARIO) {
 
 async function editar(id: string, body: Record<string, unknown>, usuarioId = USUARIO) {
   const reply = criarReply()
-  await editarTransacao(criarRequest({ usuarioId, body, params: { id } }), comoReply(reply))
+  await editarTransacao(
+    criarRequest({ usuarioId, body, params: { id } }),
+    comoReply(reply),
+  )
   return reply
 }
 
@@ -83,6 +150,7 @@ function semear(dados: Partial<Parameters<typeof prisma._db.transacoes.set>[1]> 
     contaId: CONTA_A,
     contaDestinoId: null,
     categoriaId: CATEGORIA,
+    subcategoriaId: null as string | null,
     recorrenciaId: null,
     ...dados,
   }
@@ -225,14 +293,14 @@ describe('criarTransacao', () => {
       await criar(corpoTransferencia)
 
       const categoriasTransferencia = Array.from(prisma._db.categorias.values()).filter(
-        (c) => c.tipo === 'TRANSFERENCIA'
+        (c) => c.tipo === 'TRANSFERENCIA',
       )
       expect(categoriasTransferencia).toHaveLength(1)
     })
 
     it('rejeita transferência sem conta de destino', async () => {
       const erro = await capturarErro(() =>
-        criar({ ...corpoTransferencia, contaDestinoId: undefined })
+        criar({ ...corpoTransferencia, contaDestinoId: undefined }),
       )
 
       expect(erro).toBeTruthy()
@@ -241,7 +309,7 @@ describe('criarTransacao', () => {
 
     it('rejeita transferência para a própria conta de origem', async () => {
       const erro = await capturarErro(() =>
-        criar({ ...corpoTransferencia, contaDestinoId: CONTA_A })
+        criar({ ...corpoTransferencia, contaDestinoId: CONTA_A }),
       )
 
       expect(erro).toBeTruthy()
@@ -250,7 +318,7 @@ describe('criarTransacao', () => {
 
     it('rejeita transferência para conta de outro usuário, sem mover saldo', async () => {
       const erro = await capturarErro(() =>
-        criar({ ...corpoTransferencia, contaDestinoId: CONTA_ALHEIA })
+        criar({ ...corpoTransferencia, contaDestinoId: CONTA_ALHEIA }),
       )
 
       expect(erro).toBeInstanceOf(AppError)
@@ -270,7 +338,7 @@ describe('criarTransacao', () => {
         dataVencimento: VENCIMENTO.toISOString(),
         contaId: CONTA_ALHEIA,
         categoriaId: CATEGORIA,
-      })
+      }),
     )
 
     expect(erro).toBeInstanceOf(AppError)
@@ -293,7 +361,9 @@ describe('editarTransacao', () => {
 
     const reply = await editar(TRANSACAO, { status: 'PAGA' })
 
-    expect((reply.payload as { dataPagamento: Date | null }).dataPagamento).toBeInstanceOf(Date)
+    expect(
+      (reply.payload as { dataPagamento: Date | null }).dataPagamento,
+    ).toBeInstanceOf(Date)
   })
 
   it('PAGA -> PENDENTE estorna o valor e limpa a dataPagamento', async () => {
@@ -406,7 +476,9 @@ describe('editarTransacao', () => {
   it('rejeita reclassificar para categoria de outro usuário', async () => {
     semear({ status: 'PAGA', tipo: 'DESPESA', valor: 10_000 })
 
-    const erro = await capturarErro(() => editar(TRANSACAO, { categoriaId: CATEGORIA_ALHEIA }))
+    const erro = await capturarErro(() =>
+      editar(TRANSACAO, { categoriaId: CATEGORIA_ALHEIA }),
+    )
 
     expect(erro).toBeInstanceOf(AppError)
     expect((erro as AppError).statusCode).toBe(404)
@@ -532,5 +604,144 @@ describe('ciclo completo', () => {
 
     expect(saldo(CONTA_A)).toBe(SALDO_A_INICIAL)
     expect(saldo(CONTA_B)).toBe(SALDO_B_INICIAL)
+  })
+})
+
+describe('subcategorias', () => {
+  const baseDespesa = {
+    descricao: 'Jantar',
+    valor: 5_000,
+    tipo: 'DESPESA' as const,
+    status: 'PAGA' as const,
+    dataVencimento: VENCIMENTO.toISOString(),
+    contaId: CONTA_A,
+    categoriaId: CATEGORIA,
+  }
+
+  describe('criarTransacao', () => {
+    it('grava o vinculo quando a subcategoria pertence a categoria', async () => {
+      const reply = await criar({ ...baseDespesa, subcategoriaId: SUBCATEGORIA })
+
+      expect(reply.statusCode).toBe(201)
+      expect((reply.payload as { subcategoriaId: string }).subcategoriaId).toBe(
+        SUBCATEGORIA,
+      )
+      expect(saldo(CONTA_A)).toBe(SALDO_A_INICIAL - 5_000)
+    })
+
+    it('aceita transacao sem subcategoria (so com a categoria)', async () => {
+      const reply = await criar(baseDespesa)
+
+      expect(reply.statusCode).toBe(201)
+      expect(
+        (reply.payload as { subcategoriaId: string | null }).subcategoriaId,
+      ).toBeNull()
+    })
+
+    it('rejeita subcategoria de outra categoria sem mover saldo', async () => {
+      const erro = await capturarErro(() =>
+        criar({ ...baseDespesa, subcategoriaId: SUBCATEGORIA_DE_OUTRA_CATEGORIA }),
+      )
+
+      expect(erro).toBeInstanceOf(AppError)
+      expect((erro as AppError).statusCode).toBe(400)
+      expect(saldo(CONTA_A)).toBe(SALDO_A_INICIAL)
+    })
+
+    it('rejeita subcategoria de outro usuario sem mover saldo', async () => {
+      const erro = await capturarErro(() =>
+        criar({ ...baseDespesa, subcategoriaId: SUBCATEGORIA_ALHEIA }),
+      )
+
+      expect(erro).toBeInstanceOf(AppError)
+      expect((erro as AppError).statusCode).toBe(404)
+      expect(saldo(CONTA_A)).toBe(SALDO_A_INICIAL)
+    })
+
+    it('rejeita subcategoria em TRANSFERENCIA', async () => {
+      const erro = await capturarErro(() =>
+        criar({
+          descricao: 'Transferência',
+          valor: 5_000,
+          tipo: 'TRANSFERENCIA',
+          status: 'PAGA',
+          dataVencimento: VENCIMENTO.toISOString(),
+          contaId: CONTA_A,
+          contaDestinoId: CONTA_B,
+          subcategoriaId: SUBCATEGORIA,
+        }),
+      )
+
+      expect(erro).not.toBeNull()
+      expect(saldo(CONTA_A)).toBe(SALDO_A_INICIAL)
+      expect(saldo(CONTA_B)).toBe(SALDO_B_INICIAL)
+    })
+  })
+
+  describe('editarTransacao', () => {
+    it('rejeita trocar so a categoria, deixando a subcategoria orfa', async () => {
+      const { id } = semear({ subcategoriaId: SUBCATEGORIA })
+      const saldoAntes = saldo(CONTA_A)
+
+      const erro = await capturarErro(() => editar(id, { categoriaId: OUTRA_CATEGORIA }))
+
+      expect(erro).toBeInstanceOf(AppError)
+      expect((erro as AppError).statusCode).toBe(400)
+      expect(saldo(CONTA_A)).toBe(saldoAntes)
+      expect(prisma._db.transacoes.get(id)!.categoriaId).toBe(CATEGORIA)
+    })
+
+    it('permite trocar a categoria desvinculando a subcategoria', async () => {
+      const { id } = semear({ subcategoriaId: SUBCATEGORIA })
+
+      const reply = await editar(id, {
+        categoriaId: OUTRA_CATEGORIA,
+        subcategoriaId: null,
+      })
+
+      expect(reply.statusCode).toBe(200)
+      expect(prisma._db.transacoes.get(id)!.categoriaId).toBe(OUTRA_CATEGORIA)
+      expect(prisma._db.transacoes.get(id)!.subcategoriaId).toBeNull()
+    })
+
+    it('permite trocar categoria e subcategoria juntas para um par coerente', async () => {
+      const { id } = semear({ subcategoriaId: SUBCATEGORIA })
+
+      const reply = await editar(id, {
+        categoriaId: OUTRA_CATEGORIA,
+        subcategoriaId: SUBCATEGORIA_DE_OUTRA_CATEGORIA,
+      })
+
+      expect(reply.statusCode).toBe(200)
+      expect(prisma._db.transacoes.get(id)!.subcategoriaId).toBe(
+        SUBCATEGORIA_DE_OUTRA_CATEGORIA,
+      )
+    })
+
+    it('rejeita reclassificar para subcategoria de outro usuario', async () => {
+      const { id } = semear()
+      const saldoAntes = saldo(CONTA_A)
+
+      const erro = await capturarErro(() =>
+        editar(id, { subcategoriaId: SUBCATEGORIA_ALHEIA }),
+      )
+
+      expect(erro).toBeInstanceOf(AppError)
+      expect((erro as AppError).statusCode).toBe(404)
+      expect(saldo(CONTA_A)).toBe(saldoAntes)
+      expect(prisma._db.contas.get(CONTA_ALHEIA)!.saldoAtual).toBe(700_00)
+    })
+
+    it('rejeita virar TRANSFERENCIA mantendo a subcategoria ja gravada', async () => {
+      const { id } = semear({ subcategoriaId: SUBCATEGORIA })
+
+      const erro = await capturarErro(() =>
+        editar(id, { tipo: 'TRANSFERENCIA', contaDestinoId: CONTA_B }),
+      )
+
+      expect(erro).toBeInstanceOf(AppError)
+      expect((erro as AppError).statusCode).toBe(400)
+      expect(saldo(CONTA_B)).toBe(SALDO_B_INICIAL)
+    })
   })
 })

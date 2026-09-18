@@ -1,22 +1,43 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
-import { useCategorias, useDeletarCategoria, ICategoria } from '../../hooks/useCategorias';
+import { useCategorias, useDeletarCategoria, useInativarCategoria, ICategoria } from '../../hooks/useCategorias';
 import { Button, Card, Modal, Input, IconButton, EmptyState, Skeleton, ConfirmDialog } from '@/shared/components/ui';
-import { Plus, Trash2, Edit2, Tag } from 'lucide-react-native';
+import { Plus, Trash2, ChevronRight, Tag } from 'lucide-react-native';
 import { useCriarCategoria } from '../../hooks/useCategorias';
 import { toastService } from '@/shared/services/toast.service';
 
 export function CategoriasPage() {
+  const router = useRouter();
   const { data: categorias, isLoading, isError } = useCategorias();
   const { mutate: deletar, isPending: isDeletando } = useDeletarCategoria();
+  const { mutate: inativar } = useInativarCategoria();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<string | null>(null);
+  const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<ICategoria | null>(null);
+  const [categoriaParaInativar, setCategoriaParaInativar] = useState<ICategoria | null>(null);
 
   const handleConfirmDelete = () => {
     if (!categoriaParaExcluir) return;
-    deletar(categoriaParaExcluir, { onSettled: () => setCategoriaParaExcluir(null) });
+    const alvo = categoriaParaExcluir;
+
+    deletar(alvo.id, {
+      onSuccess: () => {
+        setCategoriaParaExcluir(null);
+        toastService.success('Pronto', 'Categoria excluída.');
+      },
+      onError: (err: any) => {
+        setCategoriaParaExcluir(null);
+        // 409: há subcategorias, transações, metas ou recorrências vinculadas.
+        // Excluir apagaria histórico, então oferecemos inativar.
+        if (err?.response?.status === 409) {
+          setCategoriaParaInativar(alvo);
+          return;
+        }
+        toastService.error('Erro', err?.response?.data?.message ?? 'Não foi possível excluir.');
+      },
+    });
   };
 
   const renderItem = ({ item, index }: { item: ICategoria; index: number }) => (
@@ -26,19 +47,31 @@ export function CategoriasPage() {
       transition={{ type: 'timing', duration: 220, delay: Math.min(index, 8) * 40 }}
     >
       <Card className="mb-3 flex-row justify-between items-center">
-        <View className="flex-row items-center gap-3">
+        {/* O card inteiro leva ao detalhe, onde ficam a edição da categoria e o
+            gerenciamento das subcategorias. */}
+        <TouchableOpacity
+          className="flex-row items-center gap-3 flex-1"
+          onPress={() => router.push(`/(app)/categorias/${item.id}`)}
+        >
           <View className="w-4 h-4 rounded-full" style={{ backgroundColor: item.cor }} />
-          <View>
+          <View className="flex-1">
             <Text className="text-lg font-semibold text-slate-800 dark:text-white">{item.nome}</Text>
-            <Text className={item.tipo === 'RECEITA' ? 'text-finance-verde' : 'text-finance-vermelho'}>
-              {item.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text className={item.tipo === 'RECEITA' ? 'text-finance-verde' : 'text-finance-vermelho'}>
+                {item.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
+              </Text>
+              {!!item.subcategorias?.length && (
+                <Text className="text-finance-mutado">
+                  · {item.subcategorias.length} subcategoria{item.subcategorias.length > 1 ? 's' : ''}
+                </Text>
+              )}
+            </View>
           </View>
-        </View>
+          <ChevronRight size={18} color="#94a3b8" />
+        </TouchableOpacity>
 
-        <View className="flex-row gap-2">
-          <IconButton icon={Edit2} shape="square" size="sm" />
-          <IconButton icon={Trash2} shape="square" variant="danger" size="sm" onPress={() => setCategoriaParaExcluir(item.id)} />
+        <View className="flex-row gap-2 ml-2">
+          <IconButton icon={Trash2} shape="square" variant="danger" size="sm" onPress={() => setCategoriaParaExcluir(item)} />
         </View>
       </Card>
     </MotiView>
@@ -88,11 +121,24 @@ export function CategoriasPage() {
         visible={!!categoriaParaExcluir}
         onClose={() => setCategoriaParaExcluir(null)}
         onConfirm={handleConfirmDelete}
-        title="Deletar Categoria"
-        description="Deseja realmente deletar esta categoria? Essa ação não pode ser desfeita."
-        confirmLabel="Deletar"
+        title="Excluir Categoria"
+        description={`Deseja realmente excluir "${categoriaParaExcluir?.nome}"? Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
         destructive
         isLoading={isDeletando}
+      />
+
+      <ConfirmDialog
+        visible={!!categoriaParaInativar}
+        onClose={() => setCategoriaParaInativar(null)}
+        onConfirm={() => {
+          if (!categoriaParaInativar) return;
+          inativar(categoriaParaInativar.id);
+          setCategoriaParaInativar(null);
+        }}
+        title="Categoria em uso"
+        description={`"${categoriaParaInativar?.nome}" possui subcategorias ou lançamentos vinculados e não pode ser excluída sem apagar histórico. Deseja inativá-la? Ela deixa de aparecer no formulário de transações, mas os lançamentos antigos continuam intactos.`}
+        confirmLabel="Inativar"
       />
     </View>
   );

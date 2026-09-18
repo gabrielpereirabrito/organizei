@@ -79,9 +79,9 @@ export async function deletarConta(request: FastifyRequest, reply: FastifyReply)
     where: { id },
     include: {
       _count: {
-        select: { transacoes: true, transferenciasRecebidas: true, recorrencias: true }
-      }
-    }
+        select: { transacoes: true, transferenciasRecebidas: true, recorrencias: true },
+      },
+    },
   })
 
   checkOwnership(conta, usuarioId, 'Conta')
@@ -141,7 +141,7 @@ export async function obterSaldoTotal(request: FastifyRequest, reply: FastifyRep
 
   const contas = await prisma.conta.findMany({
     where: { usuarioId, ativa: true },
-    select: { saldoAtual: true }
+    select: { saldoAtual: true },
   })
 
   const saldoTotal = contas.reduce((acc, conta) => acc + conta.saldoAtual, 0)

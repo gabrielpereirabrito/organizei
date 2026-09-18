@@ -7,7 +7,9 @@ export async function verificarJwt(request: FastifyRequest, reply: FastifyReply)
     // 1. Extrair do cookie 'token' (Browser/Web)
     // 2. Se o cookie não existir, extrair do header 'Authorization: Bearer <TOKEN>' (Expo/Mobile)
     await request.jwtVerify()
-  } catch (err) {
-    return reply.status(401).send({ message: 'Não autorizado. Token inválido ou ausente.' })
+  } catch {
+    return reply
+      .status(401)
+      .send({ message: 'Não autorizado. Token inválido ou ausente.' })
   }
 }

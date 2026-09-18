@@ -54,7 +54,9 @@ describe('incrementarData', () => {
       // O dia é recalculado sempre a partir da data base: passar por fevereiro
       // não faz a recorrência "virar dia 28" dali em diante.
       const base = data(2026, 1, 31)
-      const dias = [0, 1, 2, 3, 4, 5].map((i) => incrementarData(base, 'MENSAL', i).getDate())
+      const dias = [0, 1, 2, 3, 4, 5].map((i) =>
+        incrementarData(base, 'MENSAL', i).getDate(),
+      )
       expect(dias).toEqual([31, 28, 31, 30, 31, 30])
     })
 
@@ -105,15 +107,21 @@ describe('incrementarData', () => {
     const base = data(2026, 1, 1) // quinta-feira
 
     it('DIAS soma intervaloValor dias por iteração', () => {
-      expect(iso(incrementarData(base, 'PERSONALIZADA', 3, 10, 'DIAS'))).toBe('2026-01-31')
+      expect(iso(incrementarData(base, 'PERSONALIZADA', 3, 10, 'DIAS'))).toBe(
+        '2026-01-31',
+      )
     })
 
     it('SEMANAS soma intervaloValor * 7 dias por iteração', () => {
-      expect(iso(incrementarData(base, 'PERSONALIZADA', 2, 2, 'SEMANAS'))).toBe('2026-01-29')
+      expect(iso(incrementarData(base, 'PERSONALIZADA', 2, 2, 'SEMANAS'))).toBe(
+        '2026-01-29',
+      )
     })
 
     it('MESES soma intervaloValor meses por iteração', () => {
-      expect(iso(incrementarData(base, 'PERSONALIZADA', 2, 3, 'MESES'))).toBe('2026-07-01')
+      expect(iso(incrementarData(base, 'PERSONALIZADA', 2, 3, 'MESES'))).toBe(
+        '2026-07-01',
+      )
     })
 
     it('ANOS soma intervaloValor anos por iteração', () => {
@@ -122,17 +130,23 @@ describe('incrementarData', () => {
 
     it('MESES também gruda no último dia do mês de destino', () => {
       const dia31 = data(2026, 1, 31)
-      expect(iso(incrementarData(dia31, 'PERSONALIZADA', 1, 1, 'MESES'))).toBe('2026-02-28')
+      expect(iso(incrementarData(dia31, 'PERSONALIZADA', 1, 1, 'MESES'))).toBe(
+        '2026-02-28',
+      )
     })
 
     it('ANOS também gruda 29/02 num ano não bissexto', () => {
       const bissexto = data(2024, 2, 29)
-      expect(iso(incrementarData(bissexto, 'PERSONALIZADA', 1, 1, 'ANOS'))).toBe('2025-02-28')
+      expect(iso(incrementarData(bissexto, 'PERSONALIZADA', 1, 1, 'ANOS'))).toBe(
+        '2025-02-28',
+      )
     })
 
     it('DIAS_UTEIS pula sábados e domingos', () => {
       // Qui 01/01 + 5 dias úteis: sex 02, seg 05, ter 06, qua 07, qui 08
-      expect(iso(incrementarData(base, 'PERSONALIZADA', 1, 5, 'DIAS_UTEIS'))).toBe('2026-01-08')
+      expect(iso(incrementarData(base, 'PERSONALIZADA', 1, 5, 'DIAS_UTEIS'))).toBe(
+        '2026-01-08',
+      )
     })
 
     it('DIAS_UTEIS nunca devolve um fim de semana quando avança', () => {
@@ -147,7 +161,9 @@ describe('incrementarData', () => {
     it('DIAS_UTEIS devolve a data base intacta na iteração 0, mesmo em fim de semana', () => {
       const sabado = data(2026, 3, 14)
       expect(sabado.getDay()).toBe(6)
-      expect(iso(incrementarData(sabado, 'PERSONALIZADA', 0, 1, 'DIAS_UTEIS'))).toBe('2026-03-14')
+      expect(iso(incrementarData(sabado, 'PERSONALIZADA', 0, 1, 'DIAS_UTEIS'))).toBe(
+        '2026-03-14',
+      )
     })
 
     // ⚠️ Comportamento ATUAL: sem intervaloValor/intervaloTipo (ou com valor 0),
@@ -163,12 +179,25 @@ describe('incrementarData', () => {
 describe('calcularInstanciasRecorrencia', () => {
   describe('limite (dataLimite)', () => {
     it('INCLUI a instância que cai exatamente na dataLimite', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 1), data(2026, 1, 22), 'SEMANAL')
-      expect(isos(datas)).toEqual(['2026-01-01', '2026-01-08', '2026-01-15', '2026-01-22'])
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 1),
+        data(2026, 1, 22),
+        'SEMANAL',
+      )
+      expect(isos(datas)).toEqual([
+        '2026-01-01',
+        '2026-01-08',
+        '2026-01-15',
+        '2026-01-22',
+      ])
     })
 
     it('EXCLUI a instância um dia depois da dataLimite', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 1), data(2026, 1, 21), 'SEMANAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 1),
+        data(2026, 1, 21),
+        'SEMANAL',
+      )
       expect(isos(datas)).toEqual(['2026-01-01', '2026-01-08', '2026-01-15'])
     })
 
@@ -176,23 +205,35 @@ describe('calcularInstanciasRecorrencia', () => {
       const inicio = new Date(2026, 0, 1, 10, 0, 0)
       // Limite no mesmo dia da 2ª instância, porém uma hora antes dela.
       const limite = new Date(2026, 0, 8, 9, 0, 0)
-      expect(isos(calcularInstanciasRecorrencia(inicio, limite, 'SEMANAL'))).toEqual(['2026-01-01'])
+      expect(isos(calcularInstanciasRecorrencia(inicio, limite, 'SEMANAL'))).toEqual([
+        '2026-01-01',
+      ])
     })
 
     it('sempre inclui a data de início quando ela não passa do limite', () => {
       const dia = data(2026, 5, 9)
-      expect(isos(calcularInstanciasRecorrencia(dia, dia, 'MENSAL'))).toEqual(['2026-05-09'])
+      expect(isos(calcularInstanciasRecorrencia(dia, dia, 'MENSAL'))).toEqual([
+        '2026-05-09',
+      ])
     })
 
     it('devolve lista vazia quando a data de início já passou do limite', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 5, 10), data(2026, 5, 9), 'MENSAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 5, 10),
+        data(2026, 5, 9),
+        'MENSAL',
+      )
       expect(datas).toEqual([])
     })
   })
 
   describe('frequência SEMANAL', () => {
     it('gera uma instância por semana dentro da janela', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 2, 26), data(2026, 3, 26), 'SEMANAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 2, 26),
+        data(2026, 3, 26),
+        'SEMANAL',
+      )
       expect(isos(datas)).toEqual([
         '2026-02-26',
         '2026-03-05',
@@ -203,7 +244,11 @@ describe('calcularInstanciasRecorrencia', () => {
     })
 
     it('gera 53 instâncias numa janela de um ano cheio', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 1), data(2026, 12, 31), 'SEMANAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 1),
+        data(2026, 12, 31),
+        'SEMANAL',
+      )
       expect(datas).toHaveLength(53)
       expect(iso(datas[datas.length - 1])).toBe('2026-12-31')
     })
@@ -211,21 +256,38 @@ describe('calcularInstanciasRecorrencia', () => {
 
   describe('frequência MENSAL', () => {
     it('gera 12 instâncias na janela de rolling window de 12 meses', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 15), data(2026, 12, 31), 'MENSAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 15),
+        data(2026, 12, 31),
+        'MENSAL',
+      )
       expect(datas).toHaveLength(12)
       expect(isos(datas).slice(0, 3)).toEqual(['2026-01-15', '2026-02-15', '2026-03-15'])
       expect(iso(datas[11])).toBe('2026-12-15')
     })
 
     it('atravessa a virada de ano', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 11, 5), data(2027, 2, 5), 'MENSAL')
-      expect(isos(datas)).toEqual(['2026-11-05', '2026-12-05', '2027-01-05', '2027-02-05'])
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 11, 5),
+        data(2027, 2, 5),
+        'MENSAL',
+      )
+      expect(isos(datas)).toEqual([
+        '2026-11-05',
+        '2026-12-05',
+        '2027-01-05',
+        '2027-02-05',
+      ])
     })
 
     // Regressão do transbordo: antes esta lista era 31/01, 03/03, 31/03, 01/05,
     // 31/05 — fevereiro e abril sumiam e as datas caíam no mês errado.
     it('gera uma instância por mês para uma recorrência no dia 31', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 31), data(2026, 6, 30), 'MENSAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 31),
+        data(2026, 6, 30),
+        'MENSAL',
+      )
       expect(isos(datas)).toEqual([
         '2026-01-31',
         '2026-02-28',
@@ -237,7 +299,11 @@ describe('calcularInstanciasRecorrencia', () => {
     })
 
     it('gera exatamente 12 instâncias no rolling window para uma recorrência no dia 31', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 1, 31), data(2027, 1, 30), 'MENSAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 1, 31),
+        data(2027, 1, 30),
+        'MENSAL',
+      )
       expect(datas).toHaveLength(12)
       // Um mês distinto por instância, sem repetir nem pular.
       expect(new Set(datas.map((d) => d.getMonth())).size).toBe(12)
@@ -246,7 +312,11 @@ describe('calcularInstanciasRecorrencia', () => {
 
   describe('frequência ANUAL', () => {
     it('gera uma instância por ano dentro da janela', () => {
-      const datas = calcularInstanciasRecorrencia(data(2026, 7, 1), data(2029, 1, 1), 'ANUAL')
+      const datas = calcularInstanciasRecorrencia(
+        data(2026, 7, 1),
+        data(2029, 1, 1),
+        'ANUAL',
+      )
       expect(isos(datas)).toEqual(['2026-07-01', '2027-07-01', '2028-07-01'])
     })
   })
@@ -258,9 +328,14 @@ describe('calcularInstanciasRecorrencia', () => {
         data(2026, 1, 20),
         'PERSONALIZADA',
         5,
-        'DIAS'
+        'DIAS',
       )
-      expect(isos(datas)).toEqual(['2026-01-01', '2026-01-06', '2026-01-11', '2026-01-16'])
+      expect(isos(datas)).toEqual([
+        '2026-01-01',
+        '2026-01-06',
+        '2026-01-11',
+        '2026-01-16',
+      ])
     })
 
     it('respeita intervalo em DIAS_UTEIS', () => {
@@ -269,7 +344,7 @@ describe('calcularInstanciasRecorrencia', () => {
         data(2026, 1, 15),
         'PERSONALIZADA',
         5,
-        'DIAS_UTEIS'
+        'DIAS_UTEIS',
       )
       expect(isos(datas)).toEqual(['2026-01-01', '2026-01-08', '2026-01-15'])
     })
@@ -285,7 +360,7 @@ describe('calcularInstanciasRecorrencia', () => {
       const datas = calcularInstanciasRecorrencia(
         data(2026, 1, 1),
         data(2026, 12, 31),
-        'PERSONALIZADA'
+        'PERSONALIZADA',
       )
 
       expect(datas).toHaveLength(1001)

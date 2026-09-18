@@ -79,7 +79,10 @@ export function TransacoesPage() {
               ) : item.categoria && (
                 <View className="flex-row items-center gap-1 mt-1">
                   <View className="w-2 h-2 rounded-full" style={{ backgroundColor: item.categoria.cor }} />
-                  <Text className="text-sm text-finance-mutado">{item.categoria.nome}</Text>
+                  <Text className="text-sm text-finance-mutado">
+                    {item.categoria.nome}
+                    {item.subcategoria ? ` › ${item.subcategoria.nome}` : ''}
+                  </Text>
                 </View>
               )}
             </View>

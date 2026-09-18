@@ -6,6 +6,8 @@ import { useAuthStore } from '../../stores/auth.store';
 import { toastService } from '@/shared/services/toast.service';
 import { Input, Button, ThemeToggle } from '@/shared/components/ui';
 
+const SENHA_MINIMA = 8;
+
 export function CadastroPage() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -16,6 +18,11 @@ export function CadastroPage() {
 
   async function handleCadastro() {
     if (!nome || !email || !senha) return toastService.error('Campos obrigatórios', 'Preencha todos os campos.');
+    // Espelha o mínimo do backend (cadastroBodySchema). Sem isto, o usuário só
+    // descobriria o requisito pelo 400 da API, depois de submeter.
+    if (senha.length < SENHA_MINIMA) {
+      return toastService.error('Senha muito curta', `A senha deve ter no mínimo ${SENHA_MINIMA} caracteres.`);
+    }
     setIsLoading(true);
     try {
       const { data } = await api.post('/auth/cadastro', { nome, email, senha });
@@ -52,7 +59,7 @@ export function CadastroPage() {
             keyboardType="email-address"
           />
           <Input
-            placeholder="Senha"
+            placeholder={`Senha (mínimo ${SENHA_MINIMA} caracteres)`}
             value={senha}
             onChangeText={setSenha}
             secureTextEntry

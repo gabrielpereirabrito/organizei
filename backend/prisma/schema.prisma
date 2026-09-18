@@ -19,6 +19,7 @@ model Usuario {
   // Relacionamentos
   contas          Conta[]
   categorias      Categoria[]
+  subcategorias   Subcategoria[]
   transacoes      Transacao[]
   recorrencias    Recorrencia[]
   metasCategorias MetaCategoria[]
@@ -65,21 +66,54 @@ enum StatusTransacao {
 }
 
 model Categoria {
-  id        String        @id @default(uuid())
-  nome      String // Ex: "Alimentação", "Salário", "Transporte"
-  icone     String? // Nome do ícone para o Expo (Ex: "fast-food")
-  cor       String? // Cor em Hexadecimal para os gráficos do front (#FF5733)
-  tipo      TipoTransacao // Define se é uma categoria de receita ou despesa
-  ativa     Boolean       @default(true)
-  usuarioId String
-  usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id           String        @id @default(uuid())
+  nome         String // Ex: "Alimentação", "Salário", "Transporte"
+  icone        String? // Nome do ícone para o Expo (Ex: "fast-food")
+  cor          String? // Cor em Hexadecimal para os gráficos do front (#FF5733)
+  tipo         TipoTransacao // Define se é uma categoria de receita ou despesa
+  ativa        Boolean       @default(true)
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
+  usuarioId    String
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
+  subcategorias   Subcategoria[]
   transacoes      Transacao[]
   recorrencias    Recorrencia[]
   metasCategorias MetaCategoria[]
 
   @@index([usuarioId])
   @@map("categorias")
+}
+
+// Segundo (e ultimo) nivel de categorizacao. Ex: "Alimentação" > "iFood".
+// O `tipo` NAO e duplicado aqui: a subcategoria herda o da categoria mae,
+// para nao existir uma segunda fonte de verdade capaz de divergir.
+model Subcategoria {
+  id           String   @id @default(uuid())
+  nome         String // Ex: "iFood", "Mercado", "Restaurante"
+  icone        String? // Nome do ícone para o Expo (Ex: "bicycle-outline")
+  cor          String? // Hexadecimal; se nulo, o front herda a cor da categoria
+  ativa        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // `usuarioId` e denormalizado de proposito: `checkOwnership` exige uma
+  // entidade com { usuarioId }. O valor e SEMPRE derivado de categoria.usuarioId
+  // na criacao, nunca aceito do corpo da requisicao.
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  transacoes      Transacao[]
+  recorrencias    Recorrencia[]
+  metasCategorias MetaCategoria[]
+
+  @@unique([categoriaId, nome]) // Impede "iFood" duplicado dentro de Alimentação
+  @@unique([id, categoriaId]) // Alvo da FK composta que garante a coerencia
+  @@index([usuarioId])
+  @@map("subcategorias")
 }
 
 model Transacao {
@@ -106,6 +140,13 @@ model Transacao {
 
   categoriaId String
   categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  // Opcional (regra 3). A FK e COMPOSTA de proposito: o par (subcategoriaId,
+  // categoriaId) so existe se a subcategoria pertencer aquela categoria, entao
+  // um par incoerente e irrepresentavel no banco (regra 4). Com subcategoriaId
+  // nulo o Postgres nao verifica a constraint (MATCH SIMPLE), que e o desejado.
+  subcategoriaId String?
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId, categoriaId], references: [id, categoriaId], onDelete: Restrict)
 
   // ⚠️ NOVO CAMPO: Se for nulo, é uma transação avulsa. Se tiver ID, pertence a uma recorrência.
   recorrenciaId String?
@@ -152,6 +193,10 @@ model Recorrencia {
   categoriaId String
   categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
 
+  // Opcional, propagado para cada instancia gerada. Mesma FK composta de Transacao.
+  subcategoriaId String?
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId, categoriaId], references: [id, categoriaId], onDelete: Restrict)
+
   // Relacionamento com as instâncias de transações geradas
   transacoes Transacao[]
 
@@ -173,8 +218,15 @@ model MetaCategoria {
   categoriaId String
   categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
 
-  // Garante que o usuário só possa ter UMA meta por categoria em um mesmo mês/ano
-  @@unique([usuarioId, categoriaId, mes, ano])
+  // Se preenchido, o limite vale para a subcategoria (ex: R$ 300 so de iFood).
+  subcategoriaId String?
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId, categoriaId], references: [id, categoriaId], onDelete: Restrict)
+
+  // Garante UMA meta por categoria/subcategoria em um mesmo mês/ano.
+  // ATENCAO: no Postgres NULL e distinto de NULL em indice unico, entao isto NAO
+  // impede duas metas de categoria (subcategoriaId nulo) duplicadas. A guarda
+  // real esta no controller de metas.
+  @@unique([usuarioId, categoriaId, subcategoriaId, mes, ano])
   @@index([usuarioId])
   @@map("metas_categorias")
 }
