@@ -16,12 +16,17 @@ const transacaoSchema = z.object({
   valor: z.number().min(1, 'Valor obrigatório'),
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']),
   categoriaId: z.string().optional(),
+  subcategoriaId: z.string().optional(),
   contaId: z.string().min(1, 'Conta é obrigatória'),
   contaDestinoId: z.string().optional(),
   dataVencimento: z.date(),
   foiPago: z.boolean(),
   dataPagamento: z.date().optional(),
 }).superRefine((data, ctx) => {
+  if (data.tipo === 'TRANSFERENCIA' && data.subcategoriaId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['subcategoriaId'], message: 'Transferências não aceitam subcategoria' });
+  }
+
   if (data.tipo === 'TRANSFERENCIA') {
     if (!data.contaDestinoId) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['contaDestinoId'], message: 'Conta destino é obrigatória' });
@@ -52,6 +57,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       valor: 0,
       tipo: 'DESPESA',
       categoriaId: '',
+      subcategoriaId: '',
       contaId: '',
       contaDestinoId: '',
       dataVencimento: new Date(),
@@ -63,6 +69,8 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
   const tipoAtual = watch('tipo');
   const foiPago = watch('foiPago');
   const dataVencimento = watch('dataVencimento');
+  const categoriaAtual = watch('categoriaId');
+  const subcategoriaAtual = watch('subcategoriaId');
 
   // Sincroniza a data de pagamento com a de vencimento se estiver marcado como pago
   useEffect(() => {
@@ -72,6 +80,22 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
   }, [dataVencimento, foiPago, setValue]);
 
   const categoriasFiltradas = categorias.filter(c => c.tipo === tipoAtual);
+
+  // Vem embutido no GET /categorias (só as ativas), então não há request extra.
+  const subcategoriasDaCategoria = categorias.find(c => c.id === categoriaAtual)?.subcategorias ?? [];
+
+  // Trocar o tipo invalida a categoria escolhida (uma categoria de DESPESA não
+  // serve para uma RECEITA) e, por tabela, a subcategoria.
+  useEffect(() => {
+    setValue('categoriaId', '', { shouldValidate: false });
+    setValue('subcategoriaId', '', { shouldValidate: false });
+  }, [tipoAtual, setValue]);
+
+  // Trocar a categoria desvincula a subcategoria: o backend recusa (400) um par
+  // incoerente, e aqui evitamos que o usuário chegue a enviá-lo.
+  useEffect(() => {
+    setValue('subcategoriaId', '', { shouldValidate: false });
+  }, [categoriaAtual, setValue]);
   const snapPoints = useMemo(() => ['70%', '90%'], []);
 
   const renderBackdrop = useCallback(
@@ -89,6 +113,7 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
         valor: data.valor,
         tipo: data.tipo,
         categoriaId: isTransferencia ? undefined : data.categoriaId,
+        subcategoriaId: isTransferencia || !data.subcategoriaId ? undefined : data.subcategoriaId,
         contaId: data.contaId,
         contaDestinoId: isTransferencia ? data.contaDestinoId : undefined,
         status: data.foiPago ? 'PAGA' : 'PENDENTE',
@@ -100,8 +125,11 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
       if (ref && 'current' in ref && ref.current) {
         ref.current.close();
       }
-    } catch (e) {
-      toastService.error('Erro', 'Não foi possível salvar a transação.');
+    } catch (e: any) {
+      // A mensagem do backend é específica (ex: "A subcategoria não pertence à
+      // categoria escolhida") e ajuda muito mais que o texto genérico.
+      const mensagem = e?.response?.data?.message ?? 'Não foi possível salvar a transação.';
+      toastService.error('Erro', mensagem);
     }
   };
 
@@ -217,12 +245,39 @@ export const NovaTransacaoSheet = forwardRef<BottomSheetRef, {}>((props, ref) =>
                 <ChoiceChip
                   key={cat.id}
                   label={cat.nome}
-                  selected={watch('categoriaId') === cat.id}
-                  onPress={() => setValue('categoriaId', cat.id)}
+                  selected={categoriaAtual === cat.id}
+                  onPress={() => setValue('categoriaId', cat.id, { shouldValidate: true })}
                 />
               ))}
             </ChoiceChipGroup>
             {errors.categoriaId && <Text className="text-finance-vermelho text-sm mb-4">{errors.categoriaId.message}</Text>}
+
+            {/* Só aparece depois que a categoria foi escolhida e se ela tiver
+                subcategorias. Ficar sem subcategoria é uma opção válida, daí o
+                chip "Sem subcategoria" vir selecionado por padrão. */}
+            {subcategoriasDaCategoria.length > 0 && (
+              <>
+                <Text className="text-sm font-medium text-finance-texto dark:text-white mb-2">
+                  Subcategoria <Text className="text-finance-mutado">(opcional)</Text>
+                </Text>
+                <ChoiceChipGroup className="mb-6">
+                  <ChoiceChip
+                    label="Sem subcategoria"
+                    variant="neutral"
+                    selected={!subcategoriaAtual}
+                    onPress={() => setValue('subcategoriaId', '', { shouldValidate: true })}
+                  />
+                  {subcategoriasDaCategoria.map(sub => (
+                    <ChoiceChip
+                      key={sub.id}
+                      label={sub.nome}
+                      selected={subcategoriaAtual === sub.id}
+                      onPress={() => setValue('subcategoriaId', sub.id, { shouldValidate: true })}
+                    />
+                  ))}
+                </ChoiceChipGroup>
+              </>
+            )}
           </>
         )}
 
