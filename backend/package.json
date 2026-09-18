@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "prisma:studio": "npx prisma studio",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
     "lint": "eslint src prisma.config.ts",
     "lint:fix": "eslint src prisma.config.ts --fix"
   },
