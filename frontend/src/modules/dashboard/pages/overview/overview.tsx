@@ -1,18 +1,20 @@
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { MotiView } from 'moti';
 import { useResumoMensal } from '@/modules/transacoes';
 import { ProjecaoFluxoCaixaChart } from '../../components/ProjecaoFluxoCaixaChart';
 import { Card, ThemeToggle, IconButton, Skeleton, EmptyState, StatusBadge } from '@/shared/components/ui';
 import { useFormatarMoeda } from '@/shared/utils/currency';
 import { usePrivacyStore } from '@/shared/stores/privacy.store';
-import { Eye, EyeOff, AlertTriangle } from 'lucide-react-native';
+import { Eye, EyeOff, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react-native';
 
 export function OverviewPage() {
   const hoje = new Date();
   const { data: resumo, isLoading, isError } = useResumoMensal(hoje.getMonth() + 1, hoje.getFullYear());
   const formatarMoeda = useFormatarMoeda();
   const { isOculto, togglePrivacy } = usePrivacyStore();
+  // Qual categoria está aberta mostrando o rateio por subcategoria.
+  const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -91,24 +93,54 @@ export function OverviewPage() {
 
       <Text className="text-xl font-bold text-finance-texto dark:text-white mb-4">Despesas por Categoria</Text>
       {resumo.gastosPorCategoria.length > 0 ? (
-        resumo.gastosPorCategoria.map((cat, idx) => (
-          <MotiView
-            key={idx}
-            from={{ opacity: 0, translateY: 12 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: Math.min(idx, 8) * 40, type: 'timing', duration: 220 }}
-          >
-            <Card className="mb-3 flex-row justify-between items-center">
-              <View className="flex-row items-center gap-3">
-                <View className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.cor || '#ccc' }} />
-                <Text className="text-lg font-medium text-finance-texto dark:text-white">{cat.categoria}</Text>
-              </View>
-              <Text className="text-lg font-semibold text-finance-texto dark:text-white">
-                {formatarMoeda(cat.valorRealizado)}
-              </Text>
-            </Card>
-          </MotiView>
-        ))
+        resumo.gastosPorCategoria.map((cat, idx) => {
+          const temSubcategorias = cat.subcategorias.length > 0;
+          const expandida = categoriaExpandida === cat.categoriaId;
+
+          return (
+            <MotiView
+              key={cat.categoriaId}
+              from={{ opacity: 0, translateY: 12 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ delay: Math.min(idx, 8) * 40, type: 'timing', duration: 220 }}
+            >
+              <Card className="mb-3">
+                <TouchableOpacity
+                  className="flex-row justify-between items-center"
+                  disabled={!temSubcategorias}
+                  onPress={() => setCategoriaExpandida(expandida ? null : cat.categoriaId)}
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <View className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.cor || '#ccc' }} />
+                    <Text className="text-lg font-medium text-finance-texto dark:text-white">{cat.categoria}</Text>
+                    {temSubcategorias &&
+                      (expandida ? (
+                        <ChevronDown size={16} color="#94a3b8" />
+                      ) : (
+                        <ChevronRight size={16} color="#94a3b8" />
+                      ))}
+                  </View>
+                  <Text className="text-lg font-semibold text-finance-texto dark:text-white">
+                    {formatarMoeda(cat.valorRealizado)}
+                  </Text>
+                </TouchableOpacity>
+
+                {expandida && (
+                  <View className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 gap-2">
+                    {cat.subcategorias.map(sub => (
+                      <View key={sub.subcategoriaId} className="flex-row justify-between items-center pl-7">
+                        <Text className="text-finance-mutado">{sub.nome}</Text>
+                        <Text className="text-finance-texto dark:text-white">
+                          {formatarMoeda(sub.valorRealizado)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </Card>
+            </MotiView>
+          );
+        })
       ) : (
         <EmptyState title="Nenhuma despesa registrada este mês" />
       )}
