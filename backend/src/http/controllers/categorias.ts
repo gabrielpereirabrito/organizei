@@ -5,7 +5,10 @@ import { checkOwnership } from '@/utils/checkOwnership'
 
 const listarCategoriasQuerySchema = z.object({
   tipo: z.enum(['RECEITA', 'DESPESA', 'TRANSFERENCIA']).optional(),
-  ativa: z.enum(['true', 'false']).optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+  ativa: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((val) => (val === 'true' ? true : val === 'false' ? false : undefined)),
 })
 
 const criarCategoriaBodySchema = z.object({
@@ -26,12 +29,20 @@ export async function listarCategorias(request: FastifyRequest, reply: FastifyRe
   const usuarioId = request.user.sub
 
   const categorias = await prisma.categoria.findMany({
-    where: { 
+    where: {
       usuarioId,
       ...(tipo ? { tipo } : {}), // Adiciona filtro apenas se 'tipo' for fornecido
       ...(ativa !== undefined ? { ativa } : {}), // Adiciona filtro apenas se 'ativa' for fornecido
     },
     orderBy: { nome: 'asc' },
+    // O formulario de transacao monta os chips de subcategoria a partir daqui,
+    // sem precisar de uma segunda requisicao por categoria.
+    include: {
+      subcategorias: {
+        where: { ativa: true },
+        orderBy: { nome: 'asc' },
+      },
+    },
   })
 
   return reply.status(200).send(categorias)
@@ -123,16 +134,27 @@ export async function deletarCategoria(request: FastifyRequest, reply: FastifyRe
     where: { id },
     include: {
       _count: {
-        select: { transacoes: true, recorrencias: true, metasCategorias: true }
-      }
-    }
+        select: {
+          transacoes: true,
+          recorrencias: true,
+          metasCategorias: true,
+          subcategorias: true,
+        },
+      },
+    },
   })
 
   checkOwnership(categoria, usuarioId, 'Categoria')
 
-  if (categoria._count.transacoes > 0 || categoria._count.recorrencias > 0 || categoria._count.metasCategorias > 0) {
-    return reply.status(409).send({ 
-      message: 'Esta categoria possui transações, metas ou recorrências vinculadas. Por favor, inative-a em vez de excluir fisicamente.' 
+  if (
+    categoria._count.transacoes > 0 ||
+    categoria._count.recorrencias > 0 ||
+    categoria._count.metasCategorias > 0 ||
+    categoria._count.subcategorias > 0
+  ) {
+    return reply.status(409).send({
+      message:
+        'Esta categoria possui subcategorias, transações, metas ou recorrências vinculadas. Por favor, inative-a em vez de excluir fisicamente.',
     })
   }
 

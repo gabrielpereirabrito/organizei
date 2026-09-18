@@ -1,10 +1,49 @@
 import { FastifyInstance } from 'fastify'
 import { cadastro, login, refresh } from './controllers/auth'
 import { verificarJwt } from './middlewares/verificar-jwt'
-import { criarConta, listarContas, buscarContaPorId, atualizarConta, deletarConta, inativarConta, ativarConta, obterSaldoTotal } from './controllers/contas'
-import { criarCategoria, listarCategorias, buscarCategoriaPorId, inativarCategoria, ativarCategoria, atualizarCategoria, deletarCategoria } from './controllers/categorias'
-import { criarTransacao, listarTransacoes, resumoMensal, editarTransacao, deletarTransacao, projecaoFluxoCaixa } from './controllers/transacoes'
-import { criarRecorrencia, editarRecorrenciaEmLote, deletarRecorrenciaEmLote, listarRecorrencias, buscarRecorrenciaPorId } from './controllers/recorrencias'
+import {
+  criarConta,
+  listarContas,
+  buscarContaPorId,
+  atualizarConta,
+  deletarConta,
+  inativarConta,
+  ativarConta,
+  obterSaldoTotal,
+} from './controllers/contas'
+import {
+  criarCategoria,
+  listarCategorias,
+  buscarCategoriaPorId,
+  inativarCategoria,
+  ativarCategoria,
+  atualizarCategoria,
+  deletarCategoria,
+} from './controllers/categorias'
+import {
+  criarSubcategoria,
+  listarSubcategorias,
+  buscarSubcategoriaPorId,
+  inativarSubcategoria,
+  ativarSubcategoria,
+  atualizarSubcategoria,
+  deletarSubcategoria,
+} from './controllers/subcategorias'
+import {
+  criarTransacao,
+  listarTransacoes,
+  resumoMensal,
+  editarTransacao,
+  deletarTransacao,
+  projecaoFluxoCaixa,
+} from './controllers/transacoes'
+import {
+  criarRecorrencia,
+  editarRecorrenciaEmLote,
+  deletarRecorrenciaEmLote,
+  listarRecorrencias,
+  buscarRecorrenciaPorId,
+} from './controllers/recorrencias'
 import { criarMeta, listarMetas, atualizarMeta, deletarMeta } from './controllers/metas'
 import { registrarPushToken } from './controllers/usuarios'
 
@@ -48,6 +87,15 @@ export async function appRoutes(app: FastifyInstance) {
     authedApp.patch('/categorias/:id/ativar', ativarCategoria)
     authedApp.put('/categorias/:id', atualizarCategoria)
     authedApp.delete('/categorias/:id', deletarCategoria)
+
+    // Subcategorias
+    authedApp.post('/subcategorias', criarSubcategoria)
+    authedApp.get('/subcategorias', listarSubcategorias)
+    authedApp.get('/subcategorias/:id', buscarSubcategoriaPorId)
+    authedApp.patch('/subcategorias/:id/inativar', inativarSubcategoria)
+    authedApp.patch('/subcategorias/:id/ativar', ativarSubcategoria)
+    authedApp.put('/subcategorias/:id', atualizarSubcategoria)
+    authedApp.delete('/subcategorias/:id', deletarSubcategoria)
 
     // Transações
     authedApp.post('/transacoes', criarTransacao)
